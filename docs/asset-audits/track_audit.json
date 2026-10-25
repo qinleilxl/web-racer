@@ -1,0 +1,14 @@
+{
+  "units": "meters",
+  "closed_loop": true,
+  "road_width_m": 8,
+  "centerline_length_m": 1105.87,
+  "max_grade_percent": 10.49,
+  "min_nonlocal_centerline_separation_m": 26.98,
+  "road_surface_triangles": 3840,
+  "scene_triangles_before_export": 197438,
+  "minimum_analytical_terrain_clearance_m": 0.35,
+  "samples": 960,
+  "collision_scope": "Road surface only. Walls and scenery are not included.",
+  "design_note": "Closed loop interpretation of single illustration; inland return invented."
+}

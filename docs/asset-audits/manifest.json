@@ -1,0 +1,62 @@
+{
+  "Coastal_Circuit.blend": {
+    "bytes": 22344720,
+    "sha256": "b2c8fe8103c41b4924f23a8f4b637318749ceb71aeb37c495d3991ff2408d119"
+  },
+  "Coastal_Circuit.glb": {
+    "bytes": 6695240,
+    "sha256": "c78309d00ee03ab04a72cc1eaedddd7ad1b339928302329fbf85cab20f1cfd62"
+  },
+  "Road_Collision.glb": {
+    "bytes": 93264,
+    "sha256": "2b7de6681d39d4440824568b82ba0b414ba44fa162730f8a3dea38e072e7a734"
+  },
+  "track_route.json": {
+    "bytes": 157438,
+    "sha256": "238a8d18ba9c9120316bdafeb9c090a3809f8675603f02c0a418fc8252d65d01"
+  },
+  "track_audit.json": {
+    "bytes": 499,
+    "sha256": "c65026b73ab428ef0448dd8129545139e1fc38d92333d6701addec9f75467069"
+  },
+  "validation_results.json": {
+    "bytes": 331,
+    "sha256": "ae1f608b107ae2567358a63344d0646b90747ebf210525218ed080136a6b53f4"
+  },
+  "export_optimization.json": {
+    "bytes": 69,
+    "sha256": "5f0518e83160fe3f1e2795bc731ea657c411745298fb41aef27faf8724c7a973"
+  },
+  "README.txt": {
+    "bytes": 2938,
+    "sha256": "9b3faf2aca237ac5785e29048c7289296729de32527c2592af655e44f2a9f62d"
+  },
+  "build_track.py": {
+    "bytes": 21739,
+    "sha256": "e3d51e30dcf4611bc8833f242181255bfe7c176a75ccc05938d149dc55cef191"
+  },
+  "optimize_export.py": {
+    "bytes": 1078,
+    "sha256": "e13cbeba10a9f8e9e37a75c2c344f029a67a71a9c6fb08cad0abeff8b7893868"
+  },
+  "validate_track.py": {
+    "bytes": 2347,
+    "sha256": "63f09f94b7f220cac874dccb31556dda08882b390d3669a9aea7c0591626006a"
+  },
+  "render_detail.py": {
+    "bytes": 547,
+    "sha256": "67274592e49c6e835f04a6abcbf384b098316fdd1843345d00516f3ac6d1179c"
+  },
+  "preview_coast.png": {
+    "bytes": 2866536,
+    "sha256": "697a2106f2b6b744a0474612f6a889ebc9b096b920ff5ca4ce7bfca1a7bc308e"
+  },
+  "preview_layout.png": {
+    "bytes": 3083311,
+    "sha256": "74be870dc6afe185dc380b95b6808de547ea4d46674be232d8f91669c0cbf426"
+  },
+  "preview_hairpin.png": {
+    "bytes": 2593739,
+    "sha256": "caef06e5f99e249f5ed197699df62fc72d0c0b60a4b2a7bf006a5d34d3c81492"
+  }
+}

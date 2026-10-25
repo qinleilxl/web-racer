@@ -1,0 +1,139 @@
+{
+  "triangles": 94708,
+  "polygons": 56679,
+  "live_control_tests": "passed: steering, roll, independent travel, steering wheel linkage, emissions, projected light energy",
+  "suspension_travel_m": [
+    -0.09,
+    0.045
+  ],
+  "steering_range_degrees": [
+    -28,
+    28
+  ],
+  "steering_wheel_ratio": 12,
+  "wheel_mapping": {
+    "FL": [
+      "Tire casing 0 -1",
+      "Chevron tire tread 0 -1",
+      "Sidewall molded shoulder",
+      "Wheel barrel",
+      "Rolled steel rim lip",
+      "Pressed concave steel wheel",
+      "Wheel ventilation recess",
+      "Wheel ventilation recess.001",
+      "Wheel ventilation recess.002",
+      "Wheel ventilation recess.003",
+      "Wheel ventilation recess.004",
+      "Wheel ventilation recess.005",
+      "Wheel ventilation recess.006",
+      "Wheel ventilation recess.007",
+      "Wheel ventilation recess.008",
+      "Wheel ventilation recess.009",
+      "Domed hubcap",
+      "Wheel lug",
+      "Wheel lug.001",
+      "Wheel lug.002",
+      "Wheel lug.003",
+      "Wheel lug.004"
+    ],
+    "FR": [
+      "Tire casing 0 1",
+      "Chevron tire tread 0 1",
+      "Sidewall molded shoulder.001",
+      "Wheel barrel.001",
+      "Rolled steel rim lip.001",
+      "Pressed concave steel wheel.001",
+      "Wheel ventilation recess.010",
+      "Wheel ventilation recess.011",
+      "Wheel ventilation recess.012",
+      "Wheel ventilation recess.013",
+      "Wheel ventilation recess.014",
+      "Wheel ventilation recess.015",
+      "Wheel ventilation recess.016",
+      "Wheel ventilation recess.017",
+      "Wheel ventilation recess.018",
+      "Wheel ventilation recess.019",
+      "Domed hubcap.001",
+      "Wheel lug.005",
+      "Wheel lug.006",
+      "Wheel lug.007",
+      "Wheel lug.008",
+      "Wheel lug.009"
+    ],
+    "RL": [
+      "Tire casing 1 -1",
+      "Chevron tire tread 1 -1",
+      "Sidewall molded shoulder.002",
+      "Wheel barrel.002",
+      "Rolled steel rim lip.002",
+      "Pressed concave steel wheel.002",
+      "Wheel ventilation recess.020",
+      "Wheel ventilation recess.021",
+      "Wheel ventilation recess.022",
+      "Wheel ventilation recess.023",
+      "Wheel ventilation recess.024",
+      "Wheel ventilation recess.025",
+      "Wheel ventilation recess.026",
+      "Wheel ventilation recess.027",
+      "Wheel ventilation recess.028",
+      "Wheel ventilation recess.029",
+      "Domed hubcap.002",
+      "Wheel lug.010",
+      "Wheel lug.011",
+      "Wheel lug.012",
+      "Wheel lug.013",
+      "Wheel lug.014"
+    ],
+    "RR": [
+      "Tire casing 1 1",
+      "Chevron tire tread 1 1",
+      "Sidewall molded shoulder.003",
+      "Wheel barrel.003",
+      "Rolled steel rim lip.003",
+      "Pressed concave steel wheel.003",
+      "Wheel ventilation recess.030",
+      "Wheel ventilation recess.031",
+      "Wheel ventilation recess.032",
+      "Wheel ventilation recess.033",
+      "Wheel ventilation recess.034",
+      "Wheel ventilation recess.035",
+      "Wheel ventilation recess.036",
+      "Wheel ventilation recess.037",
+      "Wheel ventilation recess.038",
+      "Wheel ventilation recess.039",
+      "Domed hubcap.003",
+      "Wheel lug.015",
+      "Wheel lug.016",
+      "Wheel lug.017",
+      "Wheel lug.018",
+      "Wheel lug.019"
+    ]
+  },
+  "clips": [
+    "Drive",
+    "Steering",
+    "Suspension",
+    "Combined"
+  ],
+  "lights_note": "Blender live toggle; exported GLB lights/emission static on, runtime switching required.",
+  "exported_clips": [
+    {
+      "name": "Suspension",
+      "channels": 28
+    },
+    {
+      "name": "Combined",
+      "channels": 35
+    },
+    {
+      "name": "Steering",
+      "channels": 3
+    },
+    {
+      "name": "Drive",
+      "channels": 4
+    }
+  ],
+  "punctual_lights": 2,
+  "verified_glb_triangles": 94708
+}

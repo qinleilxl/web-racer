@@ -1,0 +1,10 @@
+{
+  "FL": "independent travel, wheel-center pivot and spring attachment passed",
+  "FR": "independent travel, wheel-center pivot and spring attachment passed",
+  "RL": "independent travel, wheel-center pivot and spring attachment passed",
+  "RR": "independent travel, wheel-center pivot and spring attachment passed",
+  "steering": "front wheel + 12:1 steering-wheel linkage passed",
+  "lights": "off/on energy 0/450 W passed",
+  "reimport_triangles": 94708,
+  "reimport_actions": 55
+}
