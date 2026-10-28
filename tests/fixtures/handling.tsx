@@ -18,7 +18,7 @@ function stop() {window.clearInterval(automatic);drive([]);}
 window.addEventListener("pagehide",stop);
 function Controls() {
   const [result,setResult]=useState("");
-  const start=()=>{
+  const start=(drift=false)=>{
     stop();drive(["KeyR"]);drive(["KeyA"]);
     let stage="加速",since=performance.now();
     const records: string[]=[];setResult(stage);
@@ -26,8 +26,14 @@ function Controls() {
       const readings=Array.from(document.querySelectorAll(".debug-live-readouts strong"),node=>node.textContent);
       const reading=()=>`${readings[0]??speed+" km/h"} · 滑角 ${readings[2]??"—"} · 偏航 ${readings[3]??"—"}`;
       const speed=Number.parseFloat(document.querySelector(".debug-live-readouts strong, .speed-readout strong")?.textContent??"0");
+      const slip=Math.abs(Number.parseFloat(readings[2]??document.querySelector(".drift-indicator strong")?.textContent??"0"));
       const elapsed=(performance.now()-since)/1000;
-      if(stage==="加速" && speed>=90){stage="持续左转";since=performance.now();drive(["KeyA","ArrowLeft"]);setResult(stage);}
+      if(stage==="加速" && speed>=90){stage=drift?"手刹起漂":"持续左转";since=performance.now();drive(drift?["KeyA","ArrowLeft","Space"]:["KeyA","ArrowLeft"]);setResult(stage);}
+      else if(stage==="手刹起漂" && elapsed>=.1){stage="左转漂移";since=performance.now();drive(["KeyA","ArrowLeft"]);setResult(stage);}
+      else if(stage==="左转漂移" && slip>=20){records.push(`入漂：${reading()}`);stage="持续反打";since=performance.now();drive(["KeyA","ArrowRight"]);setResult(stage);}
+      else if(stage==="持续反打" && elapsed>.1 && slip<8){records.push(`退出漂移：${reading()}`);stage="反打接续";since=performance.now();setResult(stage);}
+      else if(stage==="反打接续" && elapsed>=.25){records.push(`退出后250ms：${reading()}`);stage="持续右转接续";since=performance.now();setResult(stage);}
+      else if(stage==="持续右转接续" && elapsed>=.5){records.push(`退出后750ms：${reading()}`);stage="制动";drive(["KeyZ"]);setResult(stage);}
       else if(stage==="持续左转" && elapsed>=2){records.push(`左转：${reading()}`);stage="反打右转";since=performance.now();drive(["KeyA","ArrowRight"]);setResult(stage);}
       else if(stage==="反打右转" && elapsed>=.3){records.push(`反打300ms：${reading()}`);stage="制动";drive(["KeyZ"]);setResult(stage);}
       else if(stage==="制动" && speed<1){stop();setResult(`完成\n${records.join("\n")}`);}
@@ -41,7 +47,8 @@ function Controls() {
       ["制动",["KeyZ"]],
       ["松开按键",[]],
     ].map(([label,codes])=><button key={label as string} onClick={()=>{stop();drive(codes as string[]);}} style={{padding:"8px 10px",background:"#26463d",color:"white",borderRadius:4}}>{label as string}</button>)}
-    <button onClick={start} style={{padding:8}}>高速反打验收</button>
+    <button onClick={()=>start()} style={{padding:8}}>高速反打验收</button>
+    <button onClick={()=>start(true)} style={{padding:8}}>漂移反打验收</button>
     <output style={{fontSize:12,whiteSpace:"pre-wrap",flexBasis:"100%",lineHeight:1.7}}>{result}</output>
   </aside>;
 }

@@ -785,7 +785,17 @@ export class Physics {
     );
     const aligned =
       Math.abs(this.slipAngle) < (3 * Math.PI) / 180 && relativeYaw < 0.12;
-    const driverTakingControl = aligned && Math.abs(input.steer) > 0.1;
+    // A held countersteer is the next grip turn once the actual slide exits.
+    // Waiting for near-zero yaw would mistake that new turn for old recovery.
+    // Tyre grip continues recovering independently at its existing bounded rate.
+    const heldDriftExit =
+      !this.driftControl.active &&
+      !this.driftControl.spinning &&
+      Math.abs(this.slipAngle) < DRIFT.displayExit &&
+      Math.abs(input.steer) > 0.1;
+    const driverTakingControl =
+      Math.abs(input.steer) > 0.1 && (aligned || heldDriftExit);
+    const wasRecovering = this.recoveryControl;
     const recoverySettled =
       aligned &&
       this.rearGrip > 0.97 &&
@@ -797,6 +807,8 @@ export class Physics {
       (!this.driftControl.spinning && (driverTakingControl || recoverySettled))
     )
       this.recoveryControl = false;
+    const driftSteeringHandoff =
+      wasRecovering && !this.recoveryControl && heldDriftExit;
     const unsettled =
       Math.abs(this.slipAngle) > DRIFT.displayExit ||
       relativeYaw > 0.3 ||
@@ -875,12 +887,14 @@ export class Physics {
       !canReverse ||
       Math.sign(input.steer) !== this.reversalDirection ||
       (input.steer * this.body.GetAngularVelocity().GetY() < -0.12 &&
-        input.steer * this.travelYaw < -0.06)
+        input.steer * this.travelYaw < -0.06 &&
+        relativeYaw < 0.2)
     )
       this.reversalDirection = 0;
     if (
       canReverse &&
-      input.steer * this.body.GetAngularVelocity().GetY() > 0.005
+      (input.steer * this.body.GetAngularVelocity().GetY() > 0.005 ||
+        driftSteeringHandoff)
     )
       this.reversalDirection = Math.sign(input.steer);
     const reversingTurn = this.reversalDirection !== 0;

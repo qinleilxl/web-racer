@@ -166,7 +166,9 @@ export class DriftControl {
     );
     this.steering = input * lock;
     if (this.active) {
-      const counter = input * this.angle < 0;
+      const observedSlide =
+        !this.spinning && Math.abs(actualSlip) > DRIFT.displayExit;
+      const counter = input * (observedSlide ? actualSlip : this.angle) < 0;
       this.recovering = !input || counter;
       this.requestedAngle = Math.max(
         -2.8,
@@ -180,6 +182,10 @@ export class DriftControl {
                 : (tuning?.driftBuild ?? DEFAULT_TUNING.driftBuild)),
         ),
       );
+      // Countersteer unwinds the actual slide. Do not build an opposite drift
+      // just because the internal target crossed zero before the car caught up.
+      if (counter && observedSlide && this.requestedAngle * actualSlip < 0)
+        this.requestedAngle = 0;
       if (!input)
         this.requestedAngle *= Math.exp(
           -dt *
