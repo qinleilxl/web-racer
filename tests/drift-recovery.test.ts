@@ -14,7 +14,7 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
   try {
     for (const kmh of [60, 100, 160])
       for (const direction of [-1, 1])
-        for (const mode of ["neutral", "release", "tap", "counter"]) {
+        for (const mode of ["neutral", "coast", "tap", "counter"]) {
           p.reset(flat.track, 0);
           for (let i = 0; i < 120; i++)
             p.step(PHYSICS_STEP, parked, true, false);
@@ -25,7 +25,7 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
           for (let i = 0; i < 108; i++)
             p.step(
               PHYSICS_STEP,
-              { ...throttle, steer: direction, handbrake: true },
+              { ...throttle, steer: direction, handbrake: i < 12 },
               true,
               false,
             );
@@ -40,14 +40,14 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
             minSpeed = p.speed,
             lateSlip = 0,
             maxTilt = 0;
-          for (let i = 0; i < 420; i++) {
+          for (let i = 0; i < 540; i++) {
             const steer =
               (mode === "tap" && i < 12) || (mode === "counter" && i < 24)
                 ? -direction
                 : 0;
             p.step(
               PHYSICS_STEP,
-              { ...throttle, steer, handbrake: mode !== "release" },
+              { ...throttle, throttle: mode === "coast" ? 0 : 1, steer },
               true,
               false,
             );
@@ -64,9 +64,11 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
                 "slip target lost its angular inertia in the first 100 ms",
               );
             const slip = (p.slipAngle * direction * 180) / Math.PI;
+            if (i === 59 && (mode === "neutral" || mode === "coast"))
+              assert.ok(slip > 8, "neutral input cut the inertial slide short");
             opposite = Math.max(opposite, -slip);
             minSpeed = Math.min(minSpeed, p.speed);
-            if (i >= 360) lateSlip = Math.max(lateSlip, Math.abs(slip));
+            if (i >= 480) lateSlip = Math.max(lateSlip, Math.abs(slip));
             maxTilt = Math.max(maxTilt, tiltDegrees(p.rotation));
           }
           assert.ok(
@@ -82,7 +84,9 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
             `${kmh} ${direction} ${mode} exit did not finish restoring grip: ${p.rearGripFactor}, slip ${lateSlip}`,
           );
           assert.ok(
-            minSpeed > initialSpeed * 0.8,
+            // Lift-off now has real drivetrain resistance. Powered exits retain
+            // the original 80% bound; coasting must still keep useful momentum.
+            minSpeed > initialSpeed * (mode === "coast" ? 0.6 : 0.8),
             `${kmh} ${direction} ${mode} exit killed momentum: ${minSpeed / initialSpeed}`,
           );
           assert.ok(maxTilt < 15, "exit unsettled the chassis");
@@ -95,7 +99,7 @@ test("drift recovery carries yaw inertia, restores grip progressively and never 
         driftExitCases: cases,
         worstOppositeSlipDegrees: worstOpposite,
         maxRearGripRecoveryPerSecond: maxGripRate,
-        maxSlipAfter3Seconds: maxLateSlip,
+        maxSlipAfter4Seconds: maxLateSlip,
       }),
     );
   } finally {

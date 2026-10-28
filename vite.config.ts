@@ -1,7 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { cloudflareAssets } from "./scripts/cloudflare-assets";
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), cloudflareAssets()],
   build: {
     target: "es2022",
     chunkSizeWarningLimit: 1000,

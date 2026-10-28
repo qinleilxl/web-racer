@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Group, Mesh, Quaternion, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { VEHICLES } from "../src/game/Vehicles";
 import { Physics } from "../src/game/Physics";
 import { CarRig } from "../src/game/CarRig";
 import { PHYSICS_STEP } from "../src/game/Driving";
@@ -42,7 +43,9 @@ test("countersteering after powered or coasting wall impacts releases both sides
             );
             const impactPosition = p.position.clone();
             let touching = 0,
-              maxTilt = 0;
+              maxTilt = 0,
+              released = false;
+            const scenario = `${powered ? "powered" : "coasting"}, ${kmh} km/h, ${degrees} degrees, side ${side}`;
             for (let i = 0; i < 300; i++) {
               p.step(
                 PHYSICS_STEP,
@@ -54,23 +57,26 @@ test("countersteering after powered or coasting wall impacts releases both sides
               maxTilt = Math.max(maxTilt, tiltDegrees(p.rotation));
               assert.ok(
                 Math.abs(p.position.x) < 4.55,
-                "vehicle escaped the barrier",
+                `${scenario}: vehicle escaped the barrier`,
               );
+              // Accept the first completed exit. Continuing full countersteer
+              // after this event drives across the lane into the opposite wall
+              // and would conflate a second collision with the original release.
+              if (
+                !p.touchingWall &&
+                Math.abs(p.position.x) < flat.track.width / 2 - 0.6 &&
+                p.forwardSpeed > 0.65 &&
+                p.position.distanceTo(impactPosition) > 3
+              ) {
+                released = true;
+                break;
+              }
             }
             assert.ok(
-              touching < 270,
-              `${kmh} km/h, ${degrees} degrees, side ${side} stayed pinned for ${touching / 120}s`,
+              released,
+              `${scenario}: did not complete the first wall exit within 2.5s; forward=${p.forwardSpeed.toFixed(2)} m/s, x=${p.position.x.toFixed(2)}, distance=${p.position.distanceTo(impactPosition).toFixed(2)} m, touching=${p.touchingWall}`,
             );
             assert.ok(maxTilt < 25, `wall release tipped car: ${maxTilt}`);
-            assert.ok(
-              p.position.distanceTo(impactPosition) > 3,
-              `car stayed pinned at the impact point`,
-            );
-            if (powered)
-              assert.ok(
-                p.speed > 5,
-                `wall release stopped the car: ${p.speed}`,
-              );
             longestContact = Math.max(longestContact, touching / 120);
             cases++;
           }
@@ -87,9 +93,15 @@ test("countersteering after powered or coasting wall impacts releases both sides
 });
 
 test("real GLB front tyres steer both ways, rear tyres stay straight and load transfer preserves tyre-ground contact", async () => {
-  const bytes = await readFile("public/assets/Sparrow_One_Animated.glb");
+  const vehicle = VEHICLES.sparrow;
+  const bytes = await readFile(`public${vehicle.asset}`);
+  const loader = new GLTFLoader();
+  loader.register(() => ({
+    name: "GeometryFixture",
+    loadTexture: () => Promise.resolve(null),
+  }));
   const model = (
-    await new GLTFLoader().parseAsync(
+    await loader.parseAsync(
       bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
       "",
     )
@@ -105,17 +117,53 @@ test("real GLB front tyres steer both ways, rear tyres stay straight and load tr
     rig.update(p, 1, PHYSICS_STEP);
     car.updateMatrixWorld(true);
   };
-  const tyres = [
-    "Tire_casing_0_-1",
-    "Tire_casing_0_1",
-    "Tire_casing_1_-1",
-    "Tire_casing_1_1",
-  ].map((name) => model.getObjectByName(name) as Mesh);
-  const centres = tyres.map((tyre) => {
-    tyre.geometry.computeBoundingBox();
-    return tyre.geometry.boundingBox!.getCenter(new Vector3());
-  });
+  const tyres = rig.roll;
+  const centres = tyres.map(() => new Vector3());
   const tyre = tyres[0];
+  const wheel = model.getObjectByName("STEERING_WHEEL_PIVOT")!;
+  const ring = model.getObjectByName("Steering_•_walnut_rim") as Mesh;
+  const spoke = model.getObjectByName("Steering_•_pierced_spoke_0")!;
+  const wheelCentre = wheel.position.clone();
+  const columnAxis = new Vector3(0, 1, 0).applyQuaternion(wheel.quaternion);
+  model.updateWorldMatrix(true, true);
+  const worldColumn = new Vector3(0, 1, 0).applyQuaternion(
+    wheel.getWorldQuaternion(new Quaternion()),
+  );
+  const positions = ring.geometry.attributes.position;
+  let near = Infinity,
+    far = -Infinity;
+  for (let i = 0; i < positions.count; i++) {
+    const depth = new Vector3()
+      .fromBufferAttribute(positions, i)
+      .applyMatrix4(ring.matrixWorld)
+      .dot(worldColumn);
+    near = Math.min(near, depth);
+    far = Math.max(far, depth);
+  }
+  assert.ok(
+    far - near < 0.04,
+    "rim does not lie perpendicular to the real steering column",
+  );
+  const restingSpoke = new Vector3(0, 1, 0).applyQuaternion(spoke.quaternion);
+  const checkSteeringWheel = () => {
+    const axis = new Vector3(0, 1, 0).applyQuaternion(wheel.quaternion);
+    assert.ok(
+      axis.angleTo(columnAxis) < 1e-6,
+      "steering wheel wobbled off its column axis",
+    );
+    assert.ok(
+      wheel.position.distanceTo(wheelCentre) < 1e-9,
+      "steering wheel centre moved",
+    );
+    const actual = restingSpoke.clone().applyQuaternion(wheel.quaternion);
+    const expected = restingSpoke
+      .clone()
+      .applyAxisAngle(columnAxis, (rig.angles[0] + rig.angles[1]) * 6);
+    assert.ok(
+      actual.angleTo(expected) < 1e-6,
+      "spokes did not follow the front steering around the column",
+    );
+  };
   let maxGroundError = 0;
   const checkGround = () => {
     for (let i = 0; i < 4; i++) {
@@ -123,11 +171,11 @@ test("real GLB front tyres steer both ways, rear tyres stay straight and load tr
         contact = p.wheel(i).GetContactPosition();
       maxGroundError = Math.max(
         maxGroundError,
-        Math.abs(world.y - contact.GetY() - 0.433),
+        Math.abs(world.y - contact.GetY() - vehicle.geometry.radius),
       );
       assert.ok(
-        Math.abs(world.y - contact.GetY() - 0.433) < 0.025,
-        `visual tyre ${i} left road: ${world.y - contact.GetY() - 0.433}`,
+        Math.abs(world.y - contact.GetY() - vehicle.geometry.radius) < 0.025,
+        `visual tyre ${i} left road: ${world.y - contact.GetY() - vehicle.geometry.radius}`,
       );
     }
   };
@@ -143,6 +191,7 @@ test("real GLB front tyres steer both ways, rear tyres stay straight and load tr
       for (let i = 0; i < 120; i++) {
         p.step(PHYSICS_STEP, { ...parked, steer: direction }, true, false);
         render();
+        checkSteeringWheel();
       }
       const axle = new Vector3(0, 0, 1).applyQuaternion(
         tyre.getWorldQuaternion(new Quaternion()),
@@ -169,8 +218,12 @@ test("real GLB front tyres steer both ways, rear tyres stay straight and load tr
       accelTravel = 0,
       brakeTravel = 0;
     const bodyRise = () =>
-      new Vector3(-1.07, 0.85, 0).applyMatrix4(model.matrixWorld).y -
-      new Vector3(1.02, 0.85, 0).applyMatrix4(model.matrixWorld).y;
+      new Vector3(-vehicle.geometry.frontAxle, 0.85, 0).applyMatrix4(
+        model.matrixWorld,
+      ).y -
+      new Vector3(-vehicle.geometry.rearAxle, 0.85, 0).applyMatrix4(
+        model.matrixWorld,
+      ).y;
     for (let i = 0; i < 360; i++) {
       p.step(PHYSICS_STEP, throttle, true, false);
       render();

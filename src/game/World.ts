@@ -20,9 +20,13 @@ export class World {
     readonly scene: T.Scene,
     readonly track: Track,
     terrain: T.Object3D,
+    options: { testGround?: boolean } = {},
   ) {
     scene.background = new T.Color("#c1e0e5");
-    scene.fog = new T.FogExp2("#c7e0df", 0.00135);
+    scene.fog = new T.FogExp2(
+      "#c7e0df",
+      options.testGround ? 0.00085 : 0.00135,
+    );
     scene.add(new T.HemisphereLight("#e4f4fc", "#a9ad78", 2.3));
     this.sun = new T.DirectionalLight("#fff0cf", 3.1);
     this.sun.position.set(-60, 120, 70);
@@ -53,7 +57,7 @@ export class World {
       }
     });
     scene.add(terrain);
-    scene.add(createRoadside(track).visual);
+    if (!options.testGround) scene.add(createRoadside(track).visual);
     const sky = new T.Mesh(
       new T.SphereGeometry(1800, 24, 16),
       new T.ShaderMaterial({
@@ -104,13 +108,15 @@ export class World {
     });
     const ocean = new T.Mesh(new T.PlaneGeometry(8000, 8000), this.water);
     ocean.rotation.x = -Math.PI / 2;
-    ocean.position.y = -0.03;
+    ocean.position.y = options.testGround ? -1 : -0.03;
     scene.add(ocean);
-    this.makeGates();
-    this.makeFlags();
+    if (!options.testGround) {
+      this.makeGates();
+      this.makeFlags();
+    }
     const motePositions: number[] = [];
     for (let i = 0; i < track.points.length; i++) {
-      if (!track.wind(i)) continue;
+      if (options.testGround || !track.wind(i)) continue;
       const p = track.point(i);
       for (let j = 0; j < 2; j++)
         motePositions.push(
@@ -190,6 +196,7 @@ export class World {
     scene.add(this.tyreMarks.mesh);
   }
   private makeGates() {
+    const gateHalfWidth = this.track.width / 2 + 0.8;
     this.track.gateIndices.forEach((index, i) => {
       const p = this.track.point(index),
         dir = this.track.tangent(index);
@@ -205,7 +212,7 @@ export class World {
           new T.CylinderGeometry(0.065, 0.075, 4.5, 6),
           mat,
         );
-        pole.position.set(side * 4.8, 2.25, 0);
+        pole.position.set(side * gateHalfWidth, 2.25, 0);
         group.add(pole);
         const flag = new T.Mesh(
           new T.PlaneGeometry(1.1, 2.2, 3, 6),
@@ -215,13 +222,13 @@ export class World {
             roughness: 1,
           }),
         );
-        flag.position.set(side * 4.8, 3.25, 0);
+        flag.position.set(side * gateHalfWidth, 3.25, 0);
         group.add(flag);
         this.flags.push(flag);
       }
       if (i === 7) {
         const banner = new T.Mesh(
-          new T.BoxGeometry(9.8, 0.7, 0.09),
+          new T.BoxGeometry(gateHalfWidth * 2 + 0.2, 0.7, 0.09),
           new T.MeshStandardMaterial({ color: "#e8e3c9" }),
         );
         banner.position.y = 4.5;
@@ -239,7 +246,7 @@ export class World {
         const texture = new T.CanvasTexture(canvas);
         texture.colorSpace = T.SRGBColorSpace;
         const sign = new T.Mesh(
-          new T.PlaneGeometry(9.4, 0.73),
+          new T.PlaneGeometry(gateHalfWidth * 2 - 0.2, 0.73),
           new T.MeshBasicMaterial({ map: texture, side: T.DoubleSide }),
         );
         sign.position.set(0, 4.5, -0.06);
@@ -262,7 +269,11 @@ export class World {
       const group = new T.Group();
       group.position
         .copy(p)
-        .add(new T.Vector3(dir.z, 0, -dir.x).multiplyScalar(4.7));
+        .add(
+          new T.Vector3(dir.z, 0, -dir.x).multiplyScalar(
+            this.track.width / 2 + 0.7,
+          ),
+        );
       const pole = new T.Mesh(
         new T.CylinderGeometry(0.04, 0.05, 3.8, 5),
         new T.MeshStandardMaterial({ color: "#ddd6ab" }),

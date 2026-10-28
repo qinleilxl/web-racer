@@ -1,26 +1,17 @@
-import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Raycaster, Vector3 } from "three";
 import { Physics } from "../src/game/Physics";
 import { PHYSICS_STEP } from "../src/game/Driving";
-import { Track } from "../src/game/Track";
 import { createRoadside, SHOULDER_WIDTH } from "../src/game/Roadside";
 import { flatCircuit, parked, throttle, tiltDegrees } from "./helpers/driving";
-const bytes = await readFile("public/assets/Road_Collision.glb");
-const collision = await new GLTFLoader().parseAsync(
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-  "",
-);
-const track = new Track(
-  JSON.parse(await readFile("public/assets/track_route.json", "utf8")),
-);
+import { loadCoastalCircuit } from "./helpers/coastal";
+const { collision, track } = await loadCoastalCircuit();
 
 const settle = (p: Physics) => {
   for (let i = 0; i < 120; i++) p.step(PHYSICS_STEP, parked, true, false);
 };
-test("0–100 below 5.5 seconds and normal top speed above 165 km/h, without wheel hop", async () => {
+test("0–100 below 3.9 seconds and normal top speed above 165 km/h, without wheel hop", async () => {
   const flat = flatCircuit(),
     p = await Physics.create(flat.road, flat.track);
   try {
@@ -36,7 +27,7 @@ test("0–100 below 5.5 seconds and normal top speed above 165 km/h, without whe
       minContacts = Math.min(minContacts, p.contacts);
     }
     assert.ok(
-      acceleration > 0 && acceleration < 5.5,
+      acceleration > 0 && acceleration < 3.9,
       `0–100: ${acceleration}s`,
     );
     assert.ok(p.speed * 3.6 > 165 && p.speed * 3.6 < 182);
@@ -90,7 +81,7 @@ test("full keyboard slalom at 100 and 160 km/h stays upright and grounded", asyn
     flat.road.geometry.dispose();
   }
 });
-test("handbrake creates a powered controllable slide and release restores grip", async () => {
+test("a handbrake tap creates a powered controllable slide and neutral input restores grip", async () => {
   const flat = flatCircuit(),
     p = await Physics.create(flat.road, flat.track);
   try {
@@ -103,7 +94,7 @@ test("handbrake creates a powered controllable slide and release restores grip",
     for (let i = 0; i < 150; i++) {
       p.step(
         PHYSICS_STEP,
-        { ...throttle, steer: 0.65, handbrake: true },
+        { ...throttle, steer: 0.65, handbrake: i < 12 },
         true,
         false,
       );
@@ -204,11 +195,11 @@ test("both original drainage troughs have continuous flush geometry around the e
   }
 });
 test("parapets never become tyre ground and the car can drive away from both shoulders", async () => {
-  const p = await Physics.create(collision.scene, track);
+  const p = await Physics.create(collision, track);
   try {
     for (let i = 0; i < track.points.length; i += 20)
       for (const side of [-1, 1]) {
-        p.reset(track, i, side * 3.65);
+        p.reset(track, i, side * (track.width / 2 - 0.35));
         // At the tightest inside bends the long chassis initially overlaps the wall.
         // Allow the contact solver to depenetrate, and check that it never falls into a trough.
         for (let j = 0; j < 360; j++) {
@@ -244,7 +235,7 @@ test("parapets never become tyre ground and the car can drive away from both sho
 });
 
 test("the browser drift-into-wall sequence cannot turn a parapet into a ramp", async () => {
-  const p = await Physics.create(collision.scene, track);
+  const p = await Physics.create(collision, track);
   let maximumHeight = 0,
     maximumTilt = 0;
   const step = (input: typeof throttle) => {

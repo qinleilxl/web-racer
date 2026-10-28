@@ -14,6 +14,40 @@ test("glancing and head-on wall impacts at 60–210 km/h do not flip or reverse 
   const flat = straightCircuit(),
     track = flat.track;
   const p = await Physics.create(flat.road, track);
+  const contactPoints: Vector3[] = [];
+  // Observe native wall manifold points without replacing the game's contact
+  // response. Their post-solve velocity includes the new physical yaw response;
+  // COM velocity alone is no longer the restitution velocity at the wall.
+  const listener = (
+    p as unknown as {
+      contactListener: {
+        OnContactAdded: (
+          one: number,
+          two: number,
+          manifold: number,
+          settings: number,
+        ) => void;
+      };
+    }
+  ).contactListener;
+  const originalContactAdded = listener.OnContactAdded;
+  listener.OnContactAdded = (one, two, manifoldPointer, settingsPointer) => {
+    originalContactAdded(one, two, manifoldPointer, settingsPointer);
+    const J = p.J;
+    const first = J.wrapPointer(one, J.Body).GetObjectLayer();
+    const second = J.wrapPointer(two, J.Body).GetObjectLayer();
+    if (!((first === 1 && second === 2) || (first === 2 && second === 1)))
+      return;
+    const manifold = J.wrapPointer(manifoldPointer, J.ContactManifold);
+    for (let i = 0; i < manifold.mRelativeContactPointsOn1.size(); i++) {
+      const point =
+        first === 1
+          ? manifold.GetWorldSpaceContactPointOn1(i)
+          : manifold.GetWorldSpaceContactPointOn2(i);
+      contactPoints.push(new Vector3(point.GetX(), point.GetY(), point.GetZ()));
+      J.destroy(point);
+    }
+  };
   let worstTilt = 0,
     worstHeading = 0,
     lowestRetention = 1,
@@ -26,6 +60,7 @@ test("glancing and head-on wall impacts at 60–210 km/h do not flip or reverse 
           p.reset(track, 100, side * 1.6);
           for (let i = 0; i < 120; i++)
             p.step(PHYSICS_STEP, parked, true, false);
+          contactPoints.length = 0;
           const forward = new Vector3(
             Math.sin((side * degrees * Math.PI) / 180),
             0,
@@ -49,12 +84,26 @@ test("glancing and head-on wall impacts at 60–210 km/h do not flip or reverse 
                 impactHeading.angleTo(forward) < 0.04,
                 "contact impulse abruptly rotated the chassis",
               );
-              const rebound = -side * p.velocity.x;
+              assert.ok(
+                contactPoints.length > 0,
+                "wall contact had no manifold points",
+              );
+              const rebound =
+                contactPoints.reduce((total, point) => {
+                  const contact = new p.J.RVec3(point.x, point.y, point.z);
+                  const velocity = p.system
+                    .GetBodyInterface()
+                    .GetPointVelocity(p.body.GetID(), contact);
+                  const speed = -side * velocity.GetX();
+                  p.J.destroy(contact);
+                  p.J.destroy(velocity);
+                  return total + speed;
+                }, 0) / contactPoints.length;
               lowestBounce = Math.min(lowestBounce, rebound);
               highestBounce = Math.max(highestBounce, rebound);
               assert.ok(
-                rebound > 0.15 && rebound < 3,
-                `missing or excessive normal rebound: ${rebound}`,
+                rebound > 0.15 && rebound < 1.6,
+                `${kmh} km/h, ${degrees} degrees, side ${side}: missing or excessive contact-point rebound: ${rebound}`,
               );
             }
             hit ||= p.touchingWall;

@@ -1,19 +1,63 @@
+import { DEFAULT_TUNING, type PhysicsTuning } from "./Tuning";
 export const PHYSICS_STEP = 1 / 120;
 export const VEHICLE = {
   mass: 950,
-  wheelbase: 2.09,
+  wheelbase: 2.46,
   maxSteer: 0.52,
-  torque: 440,
+  torque: 650,
   cruiseLimit: 50,
   boostLimit: 58,
 } as const;
+export const DRIFT = {
+  entrySpeed: 40 / 3.6,
+  exitSpeed: 25 / 3.6,
+  entrySteer: 0.25,
+  displayEnter: (12 * Math.PI) / 180,
+  displayExit: (8 * Math.PI) / 180,
+} as const;
 
-// Keep keyboard steering within a predictable lateral acceleration budget.
-export function steeringAngleLimit(speed: number, drift = 0) {
+/** Smooth, localised keyboard assistance; leave parking and >115 km/h unchanged. */
+export function midSpeedCorneringWeight(speed: number) {
+  const smooth = (value: number) => {
+    const t = Math.max(0, Math.min(1, value));
+    return t * t * (3 - 2 * t);
+  };
+  const kmh = Math.abs(speed) * 3.6;
+  return smooth((kmh - 45) / 25) * (1 - smooth((kmh - 85) / 30));
+}
+
+/** More steering reserve as speed rises, without changing the parking lock. */
+export function speedSteeringGain(speed: number) {
+  const kmh = Math.abs(speed) * 3.6;
+  const t = Math.max(0, Math.min(1, (kmh - 20) / 190));
+  return 1 + 1.15 * Math.pow(t, 1.6);
+}
+
+export function roadCorneringWeight(speed: number) {
+  const t = Math.max(0, Math.min(1, (Math.abs(speed) * 3.6 - 85) / 75));
+  const highSpeed = t * t * (3 - 2 * t);
+  return Math.min(1.25, midSpeedCorneringWeight(speed) + highSpeed * 0.85);
+}
+
+// Keep a speed-dependent envelope, with useful authority for fast direction changes.
+export function steeringAngleLimit(
+  speed: number,
+  drift = 0,
+  lateralAcceleration = DEFAULT_TUNING.steeringGrip,
+  wheelbase: number = VEHICLE.wheelbase,
+  normalCornering = true,
+) {
+  const response =
+    drift === 0
+      ? speedSteeringGain(speed) *
+        (1 + (normalCornering ? midSpeedCorneringWeight(speed) * 0.25 : 0))
+      : 1;
   return Math.min(
     VEHICLE.maxSteer,
-    Math.atan((VEHICLE.wheelbase * 13) / (speed * speed + 9)) *
-      (1 + drift * 0.65),
+    Math.atan(
+      (wheelbase * lateralAcceleration * response) / (speed * speed + 9),
+    ) *
+      (1 + drift * 1.4),
   );
 }
 export function blendAngle(from: number, to: number, alpha: number) {
@@ -28,39 +72,128 @@ export class DriftControl {
   active = false;
   angleRate = 0;
   recovering = false;
+  spinning = false;
   private requestedAngle = 0;
+  private heldDirection = 0;
+  private heldTime = 0;
+  private handbrakeDown = false;
+  private entryWindow = 0;
+  private reachedSlide = false;
   get oversteer() {
     return Math.max(0, Math.min(1, (Math.abs(this.angle) - 0.65) / 0.4));
   }
-  reset() {
+  interrupt() {
     this.angle = 0;
-    this.steering = 0;
     this.active = false;
     this.angleRate = this.requestedAngle = 0;
     this.recovering = false;
+    this.spinning = false;
+    this.entryWindow = 0;
+    this.reachedSlide = false;
   }
-  update(dt: number, input: number, handbrake: boolean, speed: number) {
+  reset() {
+    this.interrupt();
+    this.steering = 0;
+    this.heldDirection = this.heldTime = 0;
+    this.handbrakeDown = false;
+  }
+  update(
+    dt: number,
+    input: number,
+    handbrake: boolean,
+    speed: number,
+    tuning?: PhysicsTuning,
+    actualSlip = 0,
+  ) {
     const wasActive = this.active;
-    this.active = handbrake && speed > 5;
+    // Only a fresh handbrake pull can arm a new drift. Ordinary cornering slip
+    // cannot keep an old drift alive or re-arm it after slowing down.
+    const pressed = handbrake && !this.handbrakeDown;
+    this.handbrakeDown = handbrake;
+    this.entryWindow = pressed ? 0.2 : Math.max(0, this.entryWindow - dt);
+    const entering =
+      !wasActive &&
+      this.entryWindow > 0 &&
+      speed >= DRIFT.entrySpeed &&
+      Math.abs(input) >= DRIFT.entrySteer;
+    this.reachedSlide ||=
+      wasActive && Math.abs(actualSlip) >= DRIFT.displayEnter;
+    const finished =
+      wasActive &&
+      this.reachedSlide &&
+      !this.spinning &&
+      Math.abs(actualSlip) < DRIFT.displayExit;
+    this.active =
+      entering ||
+      (wasActive &&
+        !finished &&
+        speed >= DRIFT.exitSpeed &&
+        (handbrake ||
+          Math.abs(this.angle) > 0.035 ||
+          Math.abs(this.angleRate) > 0.08 ||
+          Math.abs(this.requestedAngle) > 0.015 ||
+          Math.abs(actualSlip) > DRIFT.displayExit));
+    if (entering) {
+      this.entryWindow = 0;
+      this.reachedSlide = false;
+    }
+    if (speed < DRIFT.exitSpeed) {
+      this.active = false;
+      this.requestedAngle = 0;
+      this.entryWindow = 0;
+    }
+    if (wasActive && !this.active) {
+      // The remaining yaw target can unwind, but steering cannot build it again
+      // once the actual slide has crossed the same exit used by the HUD.
+      this.requestedAngle = 0;
+      this.entryWindow = 0;
+      this.reachedSlide = false;
+    }
+    if (this.active && Math.abs(actualSlip) > 1.4 && this.oversteer > 0.6)
+      this.spinning = true;
+    if (this.spinning && speed < 3) this.interrupt();
+    else if (Math.abs(actualSlip) < 0.35 && Math.abs(this.angle) < 0.5)
+      this.spinning = false;
+    const direction = Math.sign(input);
+    this.heldTime =
+      direction && direction === this.heldDirection ? this.heldTime + dt : 0;
+    this.heldDirection = direction;
+    // Immediate initial bite, then increasing lock while held. The wheel servo
+    // below this controller remains fast, rather than adding a second slow ramp.
+    const lock = Math.min(
+      1,
+      0.38 +
+        this.heldTime *
+          (tuning?.steeringRate ?? DEFAULT_TUNING.steeringRate) *
+          0.3,
+    );
+    this.steering = input * lock;
     if (this.active) {
-      if (!wasActive) this.steering = 0;
       const counter = input * this.angle < 0;
       this.recovering = !input || counter;
       this.requestedAngle = Math.max(
         -2.8,
-        Math.min(2.8, this.requestedAngle + input * dt * (counter ? 1.8 : 0.6)),
+        Math.min(
+          2.8,
+          this.requestedAngle +
+            input *
+              dt *
+              (counter
+                ? (tuning?.driftCounter ?? DEFAULT_TUNING.driftCounter)
+                : (tuning?.driftBuild ?? DEFAULT_TUNING.driftBuild)),
+        ),
       );
-      if (!input) this.requestedAngle *= Math.exp(-dt * 1.8);
-      const rate = !input || counter ? 2.8 : 1.8;
-      const delta = input - this.steering;
-      this.steering += Math.sign(delta) * Math.min(Math.abs(delta), rate * dt);
+      if (!input)
+        this.requestedAngle *= Math.exp(
+          -dt *
+            (tuning?.driftReturn ?? DEFAULT_TUNING.driftReturn) *
+            (handbrake ? 0.45 : 0.6),
+        );
     } else {
       this.recovering = Math.abs(this.angle) > 0.005;
-      this.requestedAngle *= Math.exp(-dt * 2.4);
-      const delta = input - this.steering;
-      this.steering += this.recovering
-        ? Math.sign(delta) * Math.min(Math.abs(delta), dt * 2.8)
-        : delta;
+      this.requestedAngle *= Math.exp(
+        (-dt * (tuning?.driftReturn ?? DEFAULT_TUNING.driftReturn) * 4) / 3,
+      );
     }
     // Critically damped slip target retains its angular momentum across release/countersteer.
     const omega = 8,

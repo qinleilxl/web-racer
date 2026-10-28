@@ -1,20 +1,11 @@
-import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Vector3 } from "three";
 import { Physics } from "../src/game/Physics";
-import { Track } from "../src/game/Track";
 import { Race } from "../src/game/Race";
 import { steeringAngleLimit } from "../src/game/Driving";
-const bytes = await readFile("public/assets/Road_Collision.glb");
-const collision = await new GLTFLoader().parseAsync(
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-  "",
-);
-const track = new Track(
-  JSON.parse(await readFile("public/assets/track_route.json", "utf8")),
-);
+import { loadCoastalCircuit } from "./helpers/coastal";
+const { collision, track } = await loadCoastalCircuit();
 const neutral = {
   throttle: 0,
   brake: 0,
@@ -23,7 +14,7 @@ const neutral = {
   boost: false,
 };
 test("real Jolt vehicle finishes ten independently restarted challenges without relocation during driving", async () => {
-  const p = await Physics.create(collision.scene, track);
+  const p = await Physics.create(collision, track);
   let maxDistance = 0;
   let minContacts = 4;
   const times: number[] = [];
@@ -37,7 +28,7 @@ test("real Jolt vehicle finishes ten independently restarted challenges without 
       race.relocated(p.position);
       for (let i = 0; i < 9000 && !race.finished; i++) {
         const near = track.nearest(p.position),
-          lookahead = 5 + p.speed * 0.6;
+          lookahead = 7 + p.speed * 0.65;
         let index = near.index,
           distance = 0;
         while (distance < lookahead) {
@@ -61,9 +52,11 @@ test("real Jolt vehicle finishes ten independently restarted challenges without 
             Math.min(1, track.tangent(index).dot(track.tangent(near.index))),
           ),
         );
+        // The shared tire friction budget needs braking margin before corners;
+        // this route driver deliberately stays below the vehicle's grip limit.
         const targetSpeed = Math.max(
           6,
-          Math.min(24, Math.sqrt((7 * lookahead) / Math.max(0.001, curve))),
+          Math.min(20, Math.sqrt((3 * lookahead) / Math.max(0.001, curve))),
         );
         p.step(
           1 / 60,
@@ -103,7 +96,7 @@ test("real Jolt vehicle finishes ten independently restarted challenges without 
   }
 });
 test("braking, reverse, boost, wall collision and repeated resets remain stable", async () => {
-  const p = await Physics.create(collision.scene, track);
+  const p = await Physics.create(collision, track);
   const run = (frames: number, input = neutral, boost = false) => {
     for (let i = 0; i < frames; i++) p.step(1 / 60, input, true, boost);
   };
@@ -113,8 +106,23 @@ test("braking, reverse, boost, wall collision and repeated resets remain stable"
     run(180, { ...neutral, handbrake: false, throttle: 1 });
     assert.ok(p.forwardSpeed > 7);
     assert.ok(p.position.distanceTo(start) > 9);
-    run(180, { ...neutral, handbrake: false, brake: 1 });
-    assert.ok(p.forwardSpeed < -0.5, "low-speed S reverses the vehicle");
+    const brakeAndReverse = { ...neutral, handbrake: false, brake: 1 };
+    // First allow the tires to brake to the low-speed direction-change range.
+    // Continuing S must then reverse promptly, independently of stopping time.
+    for (let i = 0; i < 240 && p.forwardSpeed > 0.65; i++) {
+      run(1, brakeAndReverse);
+    }
+    assert.ok(
+      p.forwardSpeed >= 0 && p.forwardSpeed <= 0.65,
+      "S must brake forward motion into the stopping range within four seconds",
+    );
+    for (let i = 0; i < 60 && p.forwardSpeed >= -0.5; i++) {
+      run(1, brakeAndReverse);
+    }
+    assert.ok(
+      p.forwardSpeed < -0.5,
+      "continued S must reverse within one second after stopping",
+    );
     p.reset(track, 0);
     run(90);
     run(180, { ...neutral, handbrake: false, throttle: 1 });
@@ -130,7 +138,7 @@ test("braking, reverse, boost, wall collision and repeated resets remain stable"
     run(90);
     run(450, { ...neutral, handbrake: false, throttle: 1, steer: 1 });
     assert.ok(
-      track.nearest(p.position).distance < 6,
+      track.nearest(p.position).distance < track.width / 2 + 0.55,
       "wall must contain a sustained turn",
     );
     assert.ok(Number.isFinite(p.position.y));

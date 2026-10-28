@@ -1,27 +1,29 @@
 {
   "name": "yunjia-coastal-circuit",
-  "version": "0.6.0",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name web-racer --branch main"
   },
   "dependencies": {
-    "three": "^0.180.0",
+    "jolt-physics": "^0.35.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "jolt-physics": "^0.35.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
-    "@types/three": "^0.180.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "@vitejs/plugin-react": "^5.0.3",
-    "tsx": "^4.20.5"
+    "wrangler": "4.73.0"
   }
 }

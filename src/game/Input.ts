@@ -1,33 +1,57 @@
 import type { Input } from "./types";
+import {
+  TouchInput,
+  emptyInput,
+  automaticThrottle,
+  touchControlsEnabled,
+  type ControlMode,
+  type TouchAction,
+} from "./TouchInput";
 export class InputManager {
   keys = new Set<string>();
-  touch: Input = {
-    throttle: 0,
-    brake: 0,
-    steer: 0,
-    handbrake: false,
-    boost: false,
-  };
+  touch: Input = emptyInput();
+  readonly touchPointers = new TouchInput();
+  private mode: ControlMode = "auto";
+  private autoThrottle = false;
+  private pointerQuery = window.matchMedia("(any-pointer: coarse)");
+  get touchEnabled() {
+    return touchControlsEnabled(
+      this.mode,
+      this.pointerQuery.matches || navigator.maxTouchPoints > 0,
+    );
+  }
+  configureControls(mode: ControlMode, autoThrottle: boolean) {
+    if (this.mode !== mode || this.autoThrottle !== autoThrottle)
+      this.clearTouch();
+    this.mode = mode;
+    this.autoThrottle = autoThrottle;
+  }
+  pressTouch(id: number, action: TouchAction) {
+    this.touchPointers.press(id, action);
+    this.touch = this.touchPointers.read();
+  }
+  releaseTouch(id: number) {
+    this.touchPointers.release(id);
+    this.touch = this.touchPointers.read();
+  }
+  clearTouch() {
+    this.touchPointers.clear();
+    this.touch = emptyInput();
+  }
   constructor(private action: (key: string) => void) {
     window.addEventListener("keydown", this.down);
     window.addEventListener("keyup", this.up);
     window.addEventListener("blur", this.blur);
   }
   private down = (e: KeyboardEvent) => {
-    if ((e.target as HTMLElement)?.matches("input,select,button")) {
-      if (!["Escape"].includes(e.code)) return;
-    }
+    const target = e.target as HTMLElement | null;
     if (
-      [
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-        "Space",
-        "Tab",
-      ].includes(e.code) &&
-      e.code !== "Tab"
-    )
+      target?.closest("input,select,textarea,button,[contenteditable=true]")
+    ) {
+      if (!["Escape", "F2"].includes(e.code)) return;
+    }
+    if (e.code === "F2") e.preventDefault();
+    if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code))
       e.preventDefault();
     this.keys.add(e.code);
     if (!e.repeat) this.action(e.code);
@@ -41,25 +65,23 @@ export class InputManager {
   };
   clear() {
     this.keys.clear();
-    this.touch = {
-      throttle: 0,
-      brake: 0,
-      steer: 0,
-      handbrake: false,
-      boost: false,
-    };
+    this.clearTouch();
   }
   read(): Input {
     const k = this.keys;
-    return {
-      throttle: k.has("KeyW") || k.has("ArrowUp") ? 1 : this.touch.throttle,
-      brake: k.has("KeyS") || k.has("ArrowDown") ? 1 : this.touch.brake,
-      steer:
-        (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) -
-          (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0) || this.touch.steer,
-      handbrake: k.has("Space") || this.touch.handbrake,
-      boost: k.has("ShiftLeft") || k.has("ShiftRight") || this.touch.boost,
-    };
+    return automaticThrottle(
+      {
+        throttle: k.has("KeyA") ? 1 : this.touch.throttle,
+        brake: k.has("KeyZ") ? 1 : this.touch.brake,
+        steer:
+          k.has("ArrowRight") || k.has("ArrowLeft")
+            ? Number(k.has("ArrowRight")) - Number(k.has("ArrowLeft"))
+            : this.touch.steer,
+        handbrake: k.has("Space") || this.touch.handbrake,
+        boost: k.has("ShiftLeft") || k.has("ShiftRight") || this.touch.boost,
+      },
+      this.touchEnabled && this.autoThrottle,
+    );
   }
   dispose() {
     window.removeEventListener("keydown", this.down);

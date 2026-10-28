@@ -3,6 +3,7 @@ export interface RouteData {
   centerline_blender: number[][];
   width_m: number;
   length_m: number;
+  start_sample?: number;
 }
 export class Track {
   points: Vector3[];
@@ -14,7 +15,8 @@ export class Track {
       ([x, y, z]) => new Vector3(x, z, -y),
     );
     // The asset's painted start line is at its supplied spawn (sample 690).
-    this.points = points.slice(690).concat(points.slice(0, 690));
+    const start = data.start_sample ?? 690;
+    this.points = points.slice(start).concat(points.slice(0, start));
     this.width = data.width_m;
     this.length = data.length_m;
     this.gateIndices = Array.from(

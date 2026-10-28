@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import { Vector3 } from "three";
 import { Track } from "../src/game/Track";
 import { Race } from "../src/game/Race";
-const track = new Track(
-  JSON.parse(await readFile("public/assets/track_route.json", "utf8")),
-);
+import { COASTAL_ROAD_WIDTH } from "../src/game/CoastalCircuit";
+const track = new Track({
+  ...JSON.parse(await readFile("public/assets/track_route.json", "utf8")),
+  width_m: COASTAL_ROAD_WIDTH,
+});
 function cross(race: Race, index: number, reverse = false, offset = 0) {
   const center = track
     .point(index)

@@ -1,0 +1,23 @@
+{
+  "units": "mm",
+  "measurement": "Actual evaluated edge vertices to mating mesh faces; upper-edge distance is not elastic compression depth.",
+  "glass_max_before": 99.41636025905609,
+  "glass_max_after": 9.000003337860107,
+  "glass_min_after": 9.000003337860107,
+  "glass_samples_after": 81,
+  "glass_matches_both_parked_endpoints": true,
+  "roof_upper_edges": [
+    {
+      "seam": "SEAM_roof_to_bar",
+      "before_max": 40.56219011545181,
+      "after_max": 7.071061059832573
+    },
+    {
+      "seam": "SEAM_roof_to_header",
+      "before_max": 57.9788014292717,
+      "after_max": 8.638756349682808
+    }
+  ],
+  "designed_gasket_engagement": 1.5,
+  "tolerances_are_model_design_not_OEM_specification": true
+}

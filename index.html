@@ -2,16 +2,49 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#dfede7" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#203f3d" />
     <meta
       name="description"
-      content="云岬环线 · 驾驶小燕号，沿盐风海岸追着风，去更远的地方。"
+      content="驾驶你的赛车，沿盐风海岸挑战最佳圈速。云岬环线，一场即刻出发的海岸竞速。"
     />
     <title>云岬环线 · Cloudcape Rally</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
+    <noscript
+      ><style>
+        #root {
+          display: none;
+        }
+        body {
+          margin: 0;
+          min-height: 100dvh;
+          display: grid;
+          place-items: center;
+          background: #e5ecdf;
+          color: #203f3d;
+          font-family: system-ui, sans-serif;
+        }
+        section {
+          padding: 32px;
+          text-align: center;
+        }
+        h1 {
+          font-size: 32px;
+        }
+        p {
+          font-size: 14px;
+        }
+      </style>
+      <section>
+        <h1>云岬环线</h1>
+        <p>请启用 JavaScript 后开始游戏。</p>
+      </section></noscript
+    >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

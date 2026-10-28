@@ -1,0 +1,180 @@
+{
+  "source": "formula_car/Formula_Rigged.blend",
+  "candidate": "formula_car_surface_fix_v3/Formula_Rigged.blend",
+  "surface_results": {
+    "Continuous sculpted nose": {
+      "same_vertex_count": true,
+      "vertex_count_before": 6208,
+      "vertex_count_after": 6208,
+      "max_displacement_m": 0.025184869403979408,
+      "rms_displacement_m": 0.009203067926097402,
+      "design_endpoint_ring_displacement_m": 0.0,
+      "design_section_interp_error_m": 0.0,
+      "top_contour_bending_energy_before": 8.304281378085465,
+      "top_contour_bending_energy_after": 0.4418262009418764,
+      "bending_energy_reduction_percent": 94.67953720706248,
+      "top_outward_normal_ratio_before": 0.0,
+      "top_outward_normal_ratio_after": 1.0,
+      "top_normal_min_z_after": 0.9478103518486023,
+      "uv_wrap_discontinuity_faces_before": 96,
+      "uv_wrap_discontinuity_faces_after": 0,
+      "min_half_width_m": 0.105,
+      "min_half_height_m": 0.045,
+      "local_section_range_overshoot": [
+        {
+          "section": 3,
+          "parameter": "half_height",
+          "m": 0.0011629185982632295
+        },
+        {
+          "section": 4,
+          "parameter": "center_z",
+          "m": 8.831926823271719e-05
+        }
+      ]
+    },
+    "Sculpted sidepod -1": {
+      "same_vertex_count": true,
+      "vertex_count_before": 6208,
+      "vertex_count_after": 6208,
+      "max_displacement_m": 0.027433365614484423,
+      "rms_displacement_m": 0.008335783403894084,
+      "design_endpoint_ring_displacement_m": 0.0,
+      "design_section_interp_error_m": 0.0,
+      "top_contour_bending_energy_before": 2.304787413692084,
+      "top_contour_bending_energy_after": 0.018777706188279553,
+      "bending_energy_reduction_percent": 99.18527383147241,
+      "top_outward_normal_ratio_before": 0.0,
+      "top_outward_normal_ratio_after": 1.0,
+      "top_normal_min_z_after": 0.9824253916740417,
+      "uv_wrap_discontinuity_faces_before": 96,
+      "uv_wrap_discontinuity_faces_after": 0,
+      "min_half_width_m": 0.04,
+      "min_half_height_m": 0.075,
+      "local_section_range_overshoot": [
+        {
+          "section": 1,
+          "parameter": "half_width",
+          "m": 0.00786721419352171
+        },
+        {
+          "section": 1,
+          "parameter": "half_height",
+          "m": 0.008600784482733409
+        }
+      ]
+    },
+    "Sculpted sidepod 1": {
+      "same_vertex_count": true,
+      "vertex_count_before": 6208,
+      "vertex_count_after": 6208,
+      "max_displacement_m": 0.027433365614484423,
+      "rms_displacement_m": 0.008335783403894084,
+      "design_endpoint_ring_displacement_m": 0.0,
+      "design_section_interp_error_m": 0.0,
+      "top_contour_bending_energy_before": 2.304787413692084,
+      "top_contour_bending_energy_after": 0.018777706188279553,
+      "bending_energy_reduction_percent": 99.18527383147241,
+      "top_outward_normal_ratio_before": 0.0,
+      "top_outward_normal_ratio_after": 1.0,
+      "top_normal_min_z_after": 0.9824253916740417,
+      "uv_wrap_discontinuity_faces_before": 96,
+      "uv_wrap_discontinuity_faces_after": 0,
+      "min_half_width_m": 0.04,
+      "min_half_height_m": 0.075,
+      "local_section_range_overshoot": [
+        {
+          "section": 1,
+          "parameter": "half_width",
+          "m": 0.00786721419352171
+        },
+        {
+          "section": 1,
+          "parameter": "half_height",
+          "m": 0.008600784482733409
+        }
+      ]
+    },
+    "Sculpted tapering engine cover": {
+      "same_vertex_count": true,
+      "vertex_count_before": 6208,
+      "vertex_count_after": 6208,
+      "max_displacement_m": 0.028681874405762454,
+      "rms_displacement_m": 0.0097464175027032,
+      "design_endpoint_ring_displacement_m": 0.0,
+      "design_section_interp_error_m": 0.0,
+      "top_contour_bending_energy_before": 10.112047955541842,
+      "top_contour_bending_energy_after": 0.8771378630144803,
+      "bending_energy_reduction_percent": 91.32581385223979,
+      "top_outward_normal_ratio_before": 0.0,
+      "top_outward_normal_ratio_after": 1.0,
+      "top_normal_min_z_after": 0.9016445875167847,
+      "uv_wrap_discontinuity_faces_before": 96,
+      "uv_wrap_discontinuity_faces_after": 0,
+      "min_half_width_m": 0.07,
+      "min_half_height_m": 0.1,
+      "local_section_range_overshoot": [
+        {
+          "section": 1,
+          "parameter": "half_width",
+          "m": 0.0003743866304347643
+        },
+        {
+          "section": 1,
+          "parameter": "half_height",
+          "m": 0.0012940800000000308
+        }
+      ]
+    },
+    "Airbox outer inlet cowl": {
+      "same_vertex_count": true,
+      "vertex_count_before": 4160,
+      "vertex_count_after": 4160,
+      "max_displacement_m": 0.020008921719465594,
+      "rms_displacement_m": 0.008262324233156346,
+      "design_endpoint_ring_displacement_m": 0.0,
+      "design_section_interp_error_m": 0.0,
+      "top_contour_bending_energy_before": 98.76974211160142,
+      "top_contour_bending_energy_after": 3.1367893731947425,
+      "bending_energy_reduction_percent": 96.82413935064199,
+      "top_outward_normal_ratio_before": 0.0,
+      "top_outward_normal_ratio_after": 1.0,
+      "top_normal_min_z_after": 0.7184321284294128,
+      "uv_wrap_discontinuity_faces_before": 64,
+      "uv_wrap_discontinuity_faces_after": 0,
+      "min_half_width_m": 0.02,
+      "min_half_height_m": 0.02,
+      "local_section_range_overshoot": [
+        {
+          "section": 1,
+          "parameter": "half_width",
+          "m": 0.0019802833144189624
+        },
+        {
+          "section": 1,
+          "parameter": "center_z",
+          "m": 0.0001823433759928772
+        },
+        {
+          "section": 1,
+          "parameter": "half_height",
+          "m": 0.0028121613131467382
+        }
+      ]
+    }
+  },
+  "controls_identical": true,
+  "driver_definitions_identical": true,
+  "controls": {
+    "steer_deg": 0.0,
+    "wheel_roll_deg": 0.0,
+    "suspension_FL": 0.0,
+    "suspension_FR": 0.0,
+    "suspension_RL": 0.0,
+    "suspension_RR": 0.0
+  },
+  "driver_object_count_before": 33,
+  "driver_object_count_after": 33,
+  "warnings": [],
+  "passed": true
+}

@@ -1,0 +1,369 @@
+/* Translucent, multi-touch driving controls with reserved instrument space. */
+.app.input-touch {
+  height: 100svh;
+  height: 100dvh;
+  min-height: 0;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  --touch-zone: calc(var(--touch-key) * 1.85 + 64px);
+  --touch-key: clamp(58px, 8vw, 76px);
+  --steer-key: clamp(64px, 9vw, 84px);
+}
+.input-touch .game-viewport {
+  touch-action: none;
+}
+.input-touch .touch-controls {
+  display: flex;
+  position: absolute;
+  left: max(16px, calc(env(safe-area-inset-left) + 12px));
+  right: max(16px, calc(env(safe-area-inset-right) + 12px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 6;
+}
+.touch-direction,
+.touch-pedal-group {
+  position: relative;
+}
+.touch-steering {
+  display: flex;
+  gap: 10px;
+}
+.touch-pedals {
+  display: grid;
+  grid-template-columns: repeat(2, var(--touch-key));
+  grid-template-rows: calc(var(--touch-key) * 0.85) var(--touch-key);
+  gap: 10px;
+}
+.touch-controls .touch-key {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px;
+  color: rgb(255 249 224 / 74%);
+  background: rgb(39 70 59 / 20%);
+  border: 1px solid rgb(244 245 214 / 37%);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px rgb(255 252 225 / 10%),
+    0 3px 12px rgb(22 43 33 / 8%);
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 90ms,
+    color 90ms,
+    transform 90ms;
+}
+.touch-key svg {
+  opacity: 0.8;
+}
+.touch-key > span {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+.touch-controls .touch-left,
+.touch-controls .touch-right {
+  width: var(--steer-key);
+  height: var(--steer-key);
+  border-radius: 19px;
+}
+.touch-left svg,
+.touch-right svg {
+  width: 32px;
+  height: 32px;
+}
+.touch-controls .touch-throttle {
+  background: rgb(187 212 165 / 20%);
+  border-color: rgb(240 249 203 / 49%);
+}
+.touch-controls .touch-boost {
+  color: rgb(211 244 246 / 84%);
+}
+.touch-controls .touch-handbrake {
+  color: rgb(255 229 192 / 80%);
+}
+.touch-controls .touch-key.held,
+.touch-controls .touch-key:active {
+  color: rgb(255 253 230 / 96%);
+  background: rgb(232 242 202 / 33%);
+  border-color: rgb(255 251 211 / 79%);
+  transform: scale(0.96);
+}
+.touch-key.held svg {
+  opacity: 1;
+}
+.touch-controls.automatic .touch-brake {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  gap: 12px;
+}
+.auto-throttle-badge {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgb(239 248 217 / 88%);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 4px #233d3580;
+}
+.auto-throttle-badge i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d7e9a9c9;
+}
+.touch-tools {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.touch-tools button {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 36px;
+  border: 1px solid #eff4d52e;
+  border-radius: 11px;
+  color: #f8f4dbab;
+  background: #294e4924;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.touch-tools svg {
+  width: 19px;
+  height: 19px;
+  opacity: 0.75;
+}
+
+.input-touch .race-controls {
+  display: none;
+}
+.input-touch .topbar {
+  top: max(14px, calc(env(safe-area-inset-top) + 8px));
+  left: max(18px, calc(env(safe-area-inset-left) + 12px));
+  right: max(18px, calc(env(safe-area-inset-right) + 12px));
+}
+.input-touch .fullscreen-button {
+  display: none;
+}
+.input-touch .hud-bottom {
+  inset: auto max(18px, calc(env(safe-area-inset-right) + 12px))
+    calc(var(--touch-zone) + env(safe-area-inset-bottom))
+    max(18px, calc(env(safe-area-inset-left) + 12px));
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0;
+  filter: none;
+}
+.input-touch .wind-meter {
+  width: 148px;
+  padding: 10px 12px;
+  margin: 0;
+}
+.input-touch .wind-meter > div:first-child {
+  font-size: 9px;
+  gap: 6px;
+}
+.input-touch .wind-meter strong {
+  font-size: 17px;
+}
+.input-touch .energy-track {
+  margin-top: 9px;
+}
+.input-touch .speedometer {
+  width: 154px;
+  height: 128px;
+  transform: none;
+}
+.input-touch .speedometer > svg {
+  width: 144px;
+  height: 96px;
+  left: 5px;
+}
+.input-touch .speed-readout {
+  top: 25px;
+}
+.input-touch .speed-readout strong {
+  font-size: 49px;
+}
+.input-touch .speed-readout > span {
+  font-size: 8px;
+  margin-top: 3px;
+}
+.input-touch .gear {
+  gap: 6px;
+}
+.input-touch .gear > b {
+  font-size: 17px;
+  min-width: 24px;
+}
+.input-touch .drift-indicator {
+  bottom: calc(var(--touch-zone) + 145px + env(safe-area-inset-bottom));
+}
+.input-touch .touch-direction,
+.input-touch .touch-pedal-group {
+  pointer-events: none;
+}
+@media (max-width: 380px) {
+  .app.input-touch {
+    --steer-key: 60px;
+    --touch-key: 56px;
+  }
+  .input-touch .touch-steering {
+    gap: 7px;
+  }
+  .input-touch .touch-pedals {
+    gap: 8px;
+  }
+  .input-touch .timing {
+    width: 166px;
+    left: 18px;
+  }
+  .input-touch .minimap {
+    width: 103px;
+    right: 18px;
+  }
+  .input-touch .wind-meter {
+    width: 136px;
+  }
+  .input-touch .speedometer {
+    width: 140px;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .app.input-touch {
+    --touch-key: 57px;
+    --steer-key: 66px;
+    --touch-zone: 153px;
+  }
+  .input-touch .touch-tools {
+    margin-bottom: 12px;
+  }
+  .input-touch .topbar {
+    top: max(10px, env(safe-area-inset-top));
+  }
+  .input-touch .top-actions .icon-button {
+    width: 36px;
+    height: 36px;
+  }
+  .input-touch .timing {
+    top: 66px;
+    left: max(20px, calc(env(safe-area-inset-left) + 12px));
+    width: 182px;
+    padding: 12px 14px;
+  }
+  .input-touch .time-current {
+    font-size: 25px;
+    margin: 6px 0;
+  }
+  .input-touch .time-best {
+    font-size: 8px;
+  }
+  .input-touch .race-progress {
+    margin-top: 9px;
+  }
+  .input-touch .checkpoint-label {
+    margin-top: 7px;
+  }
+  .input-touch .minimap {
+    display: none;
+  }
+  .input-touch .hud-bottom {
+    inset: 66px max(18px, calc(env(safe-area-inset-right) + 12px)) auto auto;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 15px;
+  }
+  .input-touch .wind-meter {
+    width: 128px;
+    margin-top: 4px;
+  }
+  .input-touch .wind-meter svg {
+    display: none;
+  }
+  .input-touch .speedometer {
+    width: 118px;
+    height: 100px;
+  }
+  .input-touch .speedometer > svg {
+    width: 112px;
+    height: 76px;
+    left: 3px;
+  }
+  .input-touch .speed-readout {
+    top: 21px;
+  }
+  .input-touch .speed-readout strong {
+    font-size: 39px;
+  }
+  .input-touch .gear > span,
+  .input-touch .gear > i {
+    display: none;
+  }
+  .input-touch .gear > b {
+    font-size: 14px;
+  }
+  .input-touch .notice {
+    top: 35%;
+  }
+  .input-touch .driving-warning {
+    top: 45%;
+  }
+  .input-touch .drift-indicator {
+    bottom: 160px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .touch-controls .touch-key {
+    transition: none;
+  }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .input-touch .hud-bottom {
+    inset: 243px max(18px, calc(env(safe-area-inset-right) + 12px)) auto
+      max(18px, calc(env(safe-area-inset-left) + 12px));
+    align-items: flex-start;
+  }
+  .input-touch .wind-meter {
+    width: 139px;
+    margin-top: 8px;
+  }
+  .input-touch .speedometer {
+    width: 135px;
+    height: 114px;
+  }
+  .input-touch .speedometer > svg {
+    width: 127px;
+    height: 86px;
+    left: 4px;
+  }
+  .input-touch .speed-readout {
+    top: 23px;
+  }
+  .input-touch .speed-readout strong {
+    font-size: 45px;
+  }
+  .input-touch .gear > b {
+    font-size: 15px;
+    min-width: 22px;
+  }
+  .input-touch.map-test .hud-bottom {
+    top: 180px;
+  }
+}

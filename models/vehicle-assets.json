@@ -1,0 +1,26 @@
+{
+  "sparrow": {
+    "asset": "/assets/Sparrow_One_E_Final.glb",
+    "source": "Sparrow_E_Final_GLB/Sparrow_E_Final_GLB.zip.001 + .002",
+    "rig": "e-final",
+    "sha256": "fc9208cb7793b0f48b1b01dc19411abafc0d1925657a01370334b08b48a2d0e8"
+  },
+  "scarlet": {
+    "asset": "/assets/Hifi_Animated.glb",
+    "source": "Hifi_GLB.zip/Hifi_Animated.glb",
+    "restored": true,
+    "sha256": "cdf8b1b1861e12c2971a641ae82cd1230984b5622bd2de56563f9b93cbee28c5"
+  },
+  "formula": {
+    "asset": "/assets/Formula_Animated.glb",
+    "source": "Formula_SurfaceFix_Core_v3.zip/Formula_SurfaceFix_v3/Formula_Animated.glb",
+    "version": "3.0 surface repair",
+    "sha256": "fa324c045858e19bc3d972831e1bc9d18bf0ddc5d530d3df3a372b8c5cba1a0e"
+  },
+  "targa": {
+    "asset": "/assets/Targa_JoinFix_V2.glb",
+    "source": "Silver_Targa_V2_Animated_GLB.zip/Targa_JoinFix_V2.glb",
+    "version": "V2 rear glass / roof join repair",
+    "sha256": "fb872196a8c78aefcc3cdb5eddf618fe4a2dfff507d1e7d30a2812c994c70414"
+  }
+}

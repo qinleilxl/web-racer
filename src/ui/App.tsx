@@ -1,11 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
+import { TouchControls, useTouchCapability } from "./TouchControls";
+import { touchControlsEnabled } from "../game/TouchInput";
 import { Game } from "../game/Game";
+import { DebugPanel } from "./DebugPanel";
+import { CAMERA_LABELS, CAMERA_MODES } from "../game/CameraViews";
+import { VEHICLES, type VehicleId } from "../game/Vehicles";
 import {
   formatTime,
   loadSettings,
   type Settings,
   type Snapshot,
-  type Input,
 } from "../game/types";
 
 type IconName =
@@ -19,25 +23,23 @@ type IconName =
   | "close"
   | "back"
   | "flag"
-  | "car";
+  | "car"
+  | "camera"
+  | "reset"
+  | "help"
+  | "check"
+  | "light"
+  | "roof";
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
     wind: (
-      <>
-        <path d="M3 8h11a3 3 0 1 0-3-3M2 12h17a2.5 2.5 0 1 1-2.5 2.5M5 16h5a2.5 2.5 0 1 1-2.5 2.5" />
-      </>
+      <path d="M3 8h11a3 3 0 1 0-3-3M2 12h17a2.5 2.5 0 1 1-2.5 2.5M5 16h5a2.5 2.5 0 1 1-2.5 2.5" />
     ),
     arrow: <path d="M4 12h15m-6-6 6 6-6 6" />,
     sound: (
-      <>
-        <path d="m11 4-6 5H2v6h3l6 5zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" />
-      </>
+      <path d="m11 4-6 5H2v6h3l6 5zM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" />
     ),
-    mute: (
-      <>
-        <path d="m11 4-6 5H2v6h3l6 5zM16 9l6 6m0-6-6 6" />
-      </>
-    ),
+    mute: <path d="m11 4-6 5H2v6h3l6 5zM16 9l6 6m0-6-6 6" />,
     settings: (
       <>
         <path d="M4 7h16M4 17h16" />
@@ -45,23 +47,29 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
         <circle cx="15" cy="17" r="3" />
       </>
     ),
-    pause: (
-      <>
-        <path d="M8 5v14M16 5v14" strokeWidth="3" />
-      </>
-    ),
+    pause: <path d="M8 5v14M16 5v14" strokeWidth="2.5" />,
     expand: <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />,
     close: <path d="m6 6 12 12M6 18 18 6" />,
     back: <path d="M20 12H4m6-6-6 6 6 6" />,
-    flag: (
+    flag: <path d="M5 21V3m0 1c6-4 8 5 15 0v10c-7 5-9-4-15 0" />,
+    car: <path d="m4 10 3-6h10l3 6M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2" />,
+    camera: (
       <>
-        <path d="M5 21V3m0 1c6-4 8 5 15 0v10c-7 5-9-4-15 0" />
+        <path d="M3 8h4l2-3h6l2 3h4v12H3z" />
+        <circle cx="12" cy="13" r="4" />
       </>
     ),
-    car: (
+    reset: <path d="M4 9a8 8 0 1 1 0 6M4 3v6h6" />,
+    help: (
       <>
-        <path d="m4 10 3-6h10l3 6M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2" />
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.5 8.5a2.7 2.7 0 1 1 4 2.3c-1.5.8-1.5 1.4-1.5 2.7M12 17h.01" />
       </>
+    ),
+    check: <path d="m5 12 4 4L19 6" />,
+    light: <path d="M13 5a7 7 0 0 1 0 14V5ZM3 7h6M2 12h7M3 17h6" />,
+    roof: (
+      <path d="m3 16 2-5h14l2 5v3H3v-3ZM7 11l2-5h6l2 5M7 19v2m10-2v2M10 3h8m-2-2 2 2-2 2" />
     ),
   };
   return (
@@ -88,14 +96,43 @@ function Bird() {
     </svg>
   );
 }
+type SettingsTab = "driving" | "display" | "vehicles" | "controls";
+const VEHICLE_CLASSES: Record<VehicleId, string> = {
+  sparrow: "复古竞速",
+  scarlet: "性能跑车",
+  formula: "开放座舱",
+  targa: "机械敞篷",
+  suv: "全地形",
+};
+const timeLabel = (time: number | null) =>
+  time === null ? "暂无纪录" : formatTime(time);
+
 export default function App() {
   const host = useRef<HTMLDivElement>(null),
     game = useRef<Game | null>(null);
-  const [state, setState] = useState<Snapshot | null>(null),
-    [settings, setSettings] = useState(loadSettings),
-    [settingsOpen, setSettingsOpen] = useState(false),
-    [preview, setPreview] = useState(false),
-    [engineError, setEngineError] = useState("");
+  const [state, setState] = useState<Snapshot | null>(null);
+  const [settings, setSettings] = useState(loadSettings);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("driving");
+  const [garage, setGarage] = useState(false);
+  const [engineError, setEngineError] = useState("");
+  const touchMode = touchControlsEnabled(
+    settings.controls,
+    useTouchCapability(),
+  );
+  const secretClicks = useRef({ count: 0, last: 0 });
+  const secretEntry = () => {
+    const now = Date.now();
+    secretClicks.current.count =
+      now - secretClicks.current.last < 1800
+        ? secretClicks.current.count + 1
+        : 1;
+    secretClicks.current.last = now;
+    if (secretClicks.current.count >= 5) {
+      secretClicks.current.count = 0;
+      game.current?.enterTestGround();
+    }
+  };
   useEffect(() => {
     try {
       game.current = new Game(host.current!, settings, setState, setSettings);
@@ -106,6 +143,15 @@ export default function App() {
       game.current?.dispose();
     };
   }, []);
+  useEffect(() => {
+    if (state?.debugOpen) setSettingsOpen(false);
+  }, [state?.debugOpen]);
+  const phase = state?.phase || "loading";
+  const training = state?.mapId === "test";
+  const vehicle = VEHICLES[state?.vehicleId ?? "sparrow"];
+  const active = ["racing", "countdown", "paused", "finished"].includes(phase);
+  const error = engineError || state?.error;
+  const busy = !!state?.vehicleLoading || !!state?.tuningBusy;
   const change = (s: Settings) => {
     setSettings(s);
     game.current?.setSettings(s);
@@ -113,559 +159,875 @@ export default function App() {
   const start = () => {
     (document.activeElement as HTMLElement)?.blur();
     setSettingsOpen(false);
-    setPreview(false);
+    setGarage(false);
     void game.current?.start();
   };
   const menu = () => {
     setSettingsOpen(false);
-    setPreview(false);
+    setGarage(false);
     game.current?.menu();
   };
   const pause = () => {
     (document.activeElement as HTMLElement)?.blur();
     game.current?.togglePause();
   };
-  const phase = state?.phase || "loading";
-  const active = ["racing", "countdown", "paused", "finished"].includes(phase);
-  const error = engineError || state?.error;
-  const fullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void document.documentElement.requestFullscreen().catch(() => {});
+  const showGarage = (open: boolean) => {
+    setGarage(open);
+    if (game.current) game.current.showcase = open;
   };
-  const showSettings = () => {
-    if (phase === "racing" || phase === "countdown") game.current?.pause();
+  const selectVehicle = (id: VehicleId) => {
+    void game.current?.selectVehicle(id);
+  };
+  const showSettings = (tab: SettingsTab = "driving") => {
+    game.current?.pause();
+    game.current?.input.clear();
+    game.current?.setDebugOpen(false);
+    setSettingsTab(tab);
     setSettingsOpen(true);
   };
+  const fullscreen = () => {
+    if (document.fullscreenElement)
+      void document.exitFullscreen().catch(() => {});
+    else void document.documentElement.requestFullscreen?.().catch(() => {});
+  };
+  useEffect(() => {
+    if (!garage || settingsOpen) return;
+    const exit = (event: KeyboardEvent) => {
+      if (event.code === "Escape") {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        showGarage(false);
+      }
+    };
+    window.addEventListener("keydown", exit, true);
+    return () => window.removeEventListener("keydown", exit, true);
+  }, [garage, settingsOpen]);
+  const selection = {
+    selected: vehicle.id,
+    change: selectVehicle,
+    loading: state?.vehicleLoading,
+    progress: state?.vehicleLoadProgress,
+    error: state?.vehicleSwitchError,
+  };
+  const modal =
+    settingsOpen || phase === "paused" || phase === "finished" || !!error;
   return (
-    <main className={`app phase-${phase}`}>
+    <main
+      className={`app phase-${phase} camera-${settings.camera}${touchMode ? " input-touch" : ""}${training ? " map-test" : ""}${garage ? " garage-open" : ""}${state?.debugOpen ? " debug-open" : ""}`}
+    >
       <div
         className="game-viewport"
         ref={host}
         aria-label="云岬环线三维游戏画面"
       />
       <div className="film-grain" />
-      {phase === "menu" && !preview && <div className="menu-shade" />}
-      {phase !== "loading" && phase !== "error" && !engineError && (
-        <header className="topbar">
-          <button
-            className="brand"
-            aria-label={active ? "暂停并打开菜单" : "云岬环线主菜单"}
-            onClick={() => {
-              if (active) game.current?.pause();
-              else menu();
-            }}
-          >
-            <span className="bird">
-              <Bird />
-            </span>
-            <span>
-              CLOUDCAPE<span className="brand-rally">R A L L Y</span>
-            </span>
-          </button>
-          <div className="top-actions">
-            <span className="weather">
-              <span className="sun-icon">☀</span> 盐风海岸 <i /> 午后 · 晴
-            </span>
+      {phase === "menu" && (
+        <div className={`menu-shade${garage ? " garage-shade" : ""}`} />
+      )}
+      <div
+        className="interface-layer"
+        inert={modal && !state?.debugOpen ? true : undefined}
+      >
+        {phase !== "loading" && phase !== "error" && !engineError && (
+          <header className="topbar">
             <button
-              className="icon-button"
-              aria-label={settings.volume > 0 ? "关闭声音" : "开启声音"}
-              title="声音"
-              onClick={() =>
-                change({ ...settings, volume: settings.volume > 0 ? 0 : 0.35 })
-              }
+              className="brand"
+              aria-label={active ? "暂停比赛" : "云岬环线主菜单"}
+              onClick={() => {
+                if (active) game.current?.pause();
+                else {
+                  showGarage(false);
+                  menu();
+                }
+              }}
             >
-              <Icon name={settings.volume > 0 ? "sound" : "mute"} />
+              <span className="bird">
+                <Bird />
+              </span>
+              <span>
+                CLOUDCAPE<span className="brand-rally">RALLY</span>
+              </span>
             </button>
-            <button
-              className="icon-button"
-              aria-label="设置"
-              onClick={showSettings}
-            >
-              <Icon name="settings" />
-            </button>
-            <button
-              className="icon-button fullscreen-button"
-              aria-label="切换全屏"
-              onClick={fullscreen}
-            >
-              <Icon name="expand" />
-            </button>
-            {active && phase !== "finished" && (
+            {garage && (
+              <span className="header-section">
+                车库{" "}
+                <span>
+                  / {String(Object.keys(VEHICLES).length).padStart(2, "0")}
+                </span>
+              </span>
+            )}
+            <div className="top-actions">
+              {vehicle.convertible && state?.roof && (
+                <button
+                  className={`roof-toggle${state.roof.status === "opening" || state.roof.status === "closing" ? " moving" : ""}`}
+                  aria-label={`${state.roof.targetOpen ? "关闭" : "开启"}敞篷 O`}
+                  aria-pressed={state.roof.targetOpen}
+                  title="敞篷开合 · O"
+                  onClick={(e) => {
+                    game.current?.toggleRoof();
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <Icon name="roof" />
+                  <span>
+                    {state.roof.status === "opening"
+                      ? `开顶 ${Math.round(state.roof.progress * 100)}%`
+                      : state.roof.status === "closing"
+                        ? `关顶 ${Math.round((1 - state.roof.progress) * 100)}%`
+                        : state.roof.status === "open"
+                          ? "敞篷"
+                          : "开顶"}
+                  </span>
+                </button>
+              )}
+              {training && (
+                <button
+                  className="icon-button debug-trigger"
+                  aria-label="调试菜单 F2"
+                  aria-expanded={state?.debugOpen ?? false}
+                  title="调试 · F2"
+                  onClick={() => {
+                    (document.activeElement as HTMLElement)?.blur();
+                    setSettingsOpen(false);
+                    game.current?.setDebugOpen(!state?.debugOpen);
+                  }}
+                >
+                  <Icon name="settings" size={16} />
+                </button>
+              )}
+              {(active || garage) && (
+                <button
+                  className="icon-button headlights-button"
+                  aria-label="切换车灯 H"
+                  title="车灯 · H"
+                  onClick={(e) => {
+                    game.current?.toggleHeadlights();
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <Icon name="light" />
+                </button>
+              )}
+              <button
+                className="icon-button sound-button"
+                aria-label={settings.volume > 0 ? "关闭声音" : "开启声音"}
+                title="声音"
+                onClick={() =>
+                  change({
+                    ...settings,
+                    volume: settings.volume > 0 ? 0 : 0.35,
+                  })
+                }
+              >
+                <Icon name={settings.volume > 0 ? "sound" : "mute"} />
+              </button>
               <button
                 className="icon-button"
-                aria-label={phase === "paused" ? "继续比赛" : "暂停比赛"}
-                onClick={pause}
+                aria-label="设置"
+                title="设置"
+                onClick={() => showSettings()}
               >
-                <Icon name="pause" />
+                <Icon name="settings" />
               </button>
-            )}
-          </div>
-        </header>
-      )}
-      {phase === "loading" && !error && (
-        <section className="loading-screen">
-          <div className="loading-bird">
-            <Bird />
-          </div>
-          <p className="eyebrow">CLOUDCAPE RALLY</p>
-          <h1>风正从海上吹来</h1>
-          <p>正在准备小燕号与盐风海岸</p>
-          <div className="load-track">
-            <span style={{ width: `${state?.loaded || 3}%` }} />
-          </div>
-          <span className="load-percent">
-            {Math.round(state?.loaded || 0)}%
-          </span>
-        </section>
-      )}
-      {error && (
-        <section className="modal-scrim">
-          <div className="dialog">
-            <p className="eyebrow">暂时没能出发</p>
-            <h2>游戏载入遇到了问题</h2>
-            <p className="error-copy">{error}</p>
-            <p>请使用支持 WebGL 2 的桌面浏览器，并确认硬件加速已开启。</p>
-            <button className="primary" onClick={() => location.reload()}>
-              重新载入 <Icon name="arrow" />
-            </button>
-          </div>
-        </section>
-      )}
-      {phase === "menu" && !preview && (
-        <>
-          <section className="main-menu">
-            <div className="edition">
-              <span /> 环风竞速节 · 盐风海岸
-            </div>
-            <h1 className="game-title">
-              云岬环线<span>CLOUDCAPE RALLY</span>
-            </h1>
-            <p className="tagline">追着风，去更远的地方。</p>
-            <p className="intro">
-              让引擎醒来，让海风带路。
-              <br />
-              下一段风景，就在转弯之后。
-            </p>
-            <button className="primary start-button" onClick={start}>
-              <span>
-                开始竞速<small>单人计时挑战</small>
-              </span>
-              <Icon name="arrow" size={24} />
-            </button>
-            <div className="menu-secondary">
               <button
-                onClick={() => {
-                  setPreview(true);
-                  if (game.current) game.current.showcase = true;
-                }}
+                className="icon-button fullscreen-button"
+                aria-label="切换全屏"
+                title="全屏"
+                onClick={fullscreen}
               >
-                <Icon name="car" /> 认识小燕号
+                <Icon name="expand" />
               </button>
-              <span />
-              <button onClick={showSettings}>
-                <Icon name="settings" /> 设置
+              {active && phase !== "finished" && (
+                <button
+                  className="icon-button pause-button"
+                  aria-label={
+                    phase === "paused"
+                      ? training
+                        ? "继续试车"
+                        : "继续比赛"
+                      : training
+                        ? "暂停试车"
+                        : "暂停比赛"
+                  }
+                  title="暂停 · Esc"
+                  onClick={pause}
+                >
+                  <Icon name="pause" />
+                </button>
+              )}
+            </div>
+          </header>
+        )}
+        {phase === "menu" && !garage && (
+          <>
+            <section className="main-menu" aria-labelledby="game-title">
+              <div className="menu-heading">
+                <p className="edition">环风竞速节</p>
+                <h1 className="game-title" id="game-title">
+                  云岬环线
+                </h1>
+                <p className="tagline">追着风，去更远的地方。</p>
+              </div>
+              <div className="menu-entry">
+                <button
+                  className="primary start-button"
+                  onClick={start}
+                  disabled={busy}
+                >
+                  <span>
+                    {training ? "开始试车" : "开始竞速"}
+                    <small>
+                      {training ? "海风试车场" : "盐风海岸 · 计时挑战"}
+                    </small>
+                  </span>
+                  <Icon name="arrow" size={24} />
+                </button>
+                <button
+                  className="garage-entry"
+                  onClick={() => showGarage(true)}
+                  aria-label={`更换车辆，当前${vehicle.name}`}
+                >
+                  <i style={{ background: vehicle.color }} />
+                  <span>
+                    <small>当前车辆</small>
+                    <strong>{vehicle.name}</strong>
+                  </span>
+                  <span className="garage-entry-label">
+                    车库 <Icon name="arrow" size={16} />
+                  </span>
+                </button>
+                {state?.best != null && (
+                  <div className="best-menu">
+                    <Icon name="flag" size={15} />
+                    <span>个人最佳</span>
+                    <strong>{formatTime(state.best)}</strong>
+                  </div>
+                )}
+              </div>
+            </section>
+            <RouteCard game={game.current} training={training} />
+            <footer className="menu-footer">
+              <button
+                className="copyright"
+                aria-label="云岬环线"
+                onClick={secretEntry}
+              >
+                © CLOUDCAPE RALLY
               </button>
-            </div>
-            <div className="best-menu">
-              <Icon name="flag" size={16} />
-              <span>个人最佳</span>
-              <strong>{formatTime(state?.best ?? null)}</strong>
-            </div>
-          </section>
-          <aside className="track-postcard">
-            <span className="postcard-line" />
-            <p>SALTWIND COAST</p>
-            <h2>
-              盐风海岸 <span>01</span>
-            </h2>
-            <div>
-              <span>海岸公路</span>
-              <i />
-              1.106 km
-              <i />
-              单圈
-              <span className="difficulty">
-                难度 <b /> <b className="dim" /> <b className="dim" />
+              <button
+                className="help-entry"
+                onClick={() => showSettings("controls")}
+              >
+                <Icon name="help" size={16} /> 操作指南
+              </button>
+            </footer>
+          </>
+        )}
+        {phase === "menu" && garage && (
+          <section className="garage" aria-labelledby="garage-heading">
+            <button className="back-link" onClick={() => showGarage(false)}>
+              <Icon name="back" size={17} /> 返回
+            </button>
+            <div className="garage-info">
+              <p className="eyebrow">{vehicle.english}</p>
+              <h1 id="garage-heading">{vehicle.name}</h1>
+              <span className="vehicle-class">
+                {VEHICLE_CLASSES[vehicle.id]}
               </span>
             </div>
-          </aside>
-          <footer className="menu-footer">
-            <span className="footer-note">
-              <Icon name="wind" size={16} /> 海风向前，旅程也是。
-            </span>
-            <div className="keyboard-hint">
-              <kbd>W A S D</kbd> 驾驶 <kbd>Space</kbd> 漂移 <kbd>Shift</kbd>{" "}
-              借风加速
-            </div>
-            <span className="version">初航试玩 · v0.6</span>
-          </footer>
-        </>
+            <VehiclePicker {...selection} />
+            <dl className="vehicle-specs">
+              <div>
+                <dt>极速</dt>
+                <dd>
+                  {state?.tuning.topSpeed ?? 180}
+                  <small> km/h</small>
+                </dd>
+              </div>
+              <div>
+                <dt>车重</dt>
+                <dd>
+                  {state?.tuning.mass ?? 950}
+                  <small> kg</small>
+                </dd>
+              </div>
+              <div>
+                <dt>驱动</dt>
+                <dd className="drive-type">
+                  {(state?.tuning.frontDrive ?? 0) === 0
+                    ? "后轮"
+                    : state?.tuning.frontDrive === 100
+                      ? "前轮"
+                      : "四轮"}
+                </dd>
+              </div>
+            </dl>
+            <button className="primary" onClick={start} disabled={busy}>
+              驾驶{vehicle.name} <Icon name="arrow" />
+            </button>
+          </section>
+        )}
+        {active && state && (
+          <>
+            <RaceHud game={game.current} state={state} training={training} />
+            {phase === "countdown" && !training && (
+              <div className="countdown" key={state.countdown}>
+                <span>准备出发</span>
+                <b>{state.countdown || "GO"}</b>
+              </div>
+            )}
+            {phase === "racing" && (
+              <>
+                <div
+                  className={`notice${state.notice ? " visible" : ""}`}
+                  role="status"
+                >
+                  {state.notice}
+                </div>
+                {(state.offRoad ||
+                  state.wrongWay ||
+                  state.wallScrape > 0.2) && (
+                  <div className="driving-warning" role="status">
+                    {state.wrongWay
+                      ? "逆向行驶"
+                      : state.offRoad
+                        ? "驶离赛道"
+                        : "擦墙减速"}
+                    {state.offRoad && (
+                      <button onClick={() => game.current?.reset()}>
+                        返回赛道 <Icon name="reset" size={14} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            <nav className="race-controls" aria-label="驾驶快捷操作">
+              <button
+                className="camera-cycle"
+                onClick={(e) => {
+                  game.current?.cycleCamera();
+                  e.currentTarget.blur();
+                }}
+                aria-label={`切换视角，当前${CAMERA_LABELS[settings.camera]}`}
+              >
+                <Icon name="camera" size={17} />
+                {CAMERA_LABELS[settings.camera]}
+                <kbd>C</kbd>
+              </button>
+              <button
+                onClick={(e) => {
+                  game.current?.reset();
+                  e.currentTarget.blur();
+                }}
+                title={training ? "回到起点 · R" : "返回检查点 · R，计时 +3 秒"}
+              >
+                <Icon name="reset" size={16} />
+                复位<kbd>R</kbd>
+              </button>
+              <button onClick={() => showSettings("controls")}>
+                <Icon name="help" size={16} />
+                操作
+              </button>
+            </nav>
+            {touchMode && (phase === "racing" || phase === "countdown") && (
+              <TouchControls
+                game={game.current}
+                settings={settings}
+                training={training}
+              />
+            )}
+          </>
+        )}
+      </div>
+      {phase === "loading" && !error && (
+        <LoadingScreen loaded={state?.loaded ?? 0} />
       )}
-      {phase === "menu" && preview && (
-        <section className="car-preview">
-          <p className="eyebrow">SPARROW ONE · 01</p>
-          <h1>小燕号</h1>
-          <p>
-            奶油白车身，落日红车顶。
-            <br />
-            一颗老派而自由的机械之心。
+      {error && <ErrorDialog error={error} />}
+      {phase === "paused" && !settingsOpen && !state?.debugOpen && (
+        <Modal
+          labelledBy="pause-heading"
+          className="pause-dialog"
+          close={pause}
+        >
+          <div className="dialog-symbol">
+            <Icon name="pause" size={28} />
+          </div>
+          <p className="eyebrow">
+            {training ? "自由试车" : "盐风海岸 · 计时挑战"}
           </p>
-          <dl>
-            <div>
-              <dt>驱动</dt>
-              <dd>后轮驱动</dd>
-            </div>
-            <div>
-              <dt>变速箱</dt>
-              <dd>5 挡自动</dd>
-            </div>
-            <div>
-              <dt>车重</dt>
-              <dd>950 kg</dd>
-            </div>
-          </dl>
-          <button className="primary" onClick={start}>
-            驾驶小燕号 <Icon name="arrow" />
+          <h2 id="pause-heading">已暂停</h2>
+          <div className="pause-session">
+            <span>{vehicle.name}</span>
+            {!training && <strong>{formatTime(state?.time ?? 0)}</strong>}
+          </div>
+          <button className="primary" onClick={pause} disabled={busy}>
+            {training ? "继续试车" : "继续竞速"} <Icon name="arrow" />
           </button>
           <button
-            className="text-button"
-            onClick={() => {
-              setPreview(false);
-              if (game.current) game.current.showcase = false;
-            }}
+            className="secondary"
+            onClick={() => showSettings("vehicles")}
           >
-            <Icon name="back" /> 返回
+            <Icon name="car" size={17} />
+            更换车辆
           </button>
-        </section>
-      )}
-      {active && state && (
-        <>
-          <section className="timing">
-            <div className="lap-label">
-              <span className="live-dot" /> 单人计时{" "}
-              <span className="lap">
-                LAP <b>01</b> / 01
-              </span>
-            </div>
-            <div className="time-current">{formatTime(state.time)}</div>
-            <div className="time-best">
-              BEST <span>{formatTime(state.best)}</span>
-            </div>
-            <div className="race-progress">
-              <span style={{ width: `${state.progress * 100}%` }} />
-            </div>
-            <div className="checkpoint-label">
-              检查点{" "}
-              <strong>
-                {Math.min(state.checkpoint, 8)} <span>/ 8</span>
-              </strong>
-            </div>
-          </section>
-          <Minimap game={game.current} state={state} />
-          {phase === "countdown" && (
-            <div className="countdown" key={state.countdown}>
-              <span>准备出发</span>
-              <b>{state.countdown || "GO"}</b>
-              <small>按住 W 或 ↑ 加速</small>
-            </div>
-          )}
-          {phase === "racing" && (
-            <>
-              <div
-                className={`notice ${state.notice ? "visible" : ""}`}
-                role="status"
-              >
-                {state.notice}
-              </div>
-              {(state.offRoad || state.wrongWay || state.wallScrape > 0.2) && (
-                <div className="driving-warning">
-                  {state.wrongWay
-                    ? "方向反了，试着调头"
-                    : state.offRoad
-                      ? "离开赛道 · 按 R 返回安全路段"
-                      : "擦墙减速 · 反打方向离墙"}
-                </div>
-              )}
-            </>
-          )}
-          <div className="hud-bottom">
-            <div className="race-location">
-              <span className="location-mark">↗</span>
-              <div>
-                <small>SALTWIND COAST</small>
-                <strong>盐风海岸</strong>
-                <span>
-                  小燕号 · {settings.assists ? "辅助驾驶" : "自由驾驶"}
-                </span>
-              </div>
-            </div>
-            <div
-              className={`wind-meter ${state.boosting ? "boosting" : ""} ${state.inWind ? "collecting" : ""}`}
-            >
-              <div>
-                <Icon name="wind" size={19} />
-                <span>
-                  {state.boosting
-                    ? "乘风加速"
-                    : state.inWind
-                      ? "正在收集海风"
-                      : "风道能量"}
-                </span>
-                <strong>
-                  {Math.round(state.energy)}
-                  <small>%</small>
-                </strong>
-              </div>
-              <div className="energy-track">
-                <span style={{ width: `${state.energy}%` }} />
-              </div>
-              <p>
-                <kbd>Shift</kbd> 按住借风加速
-              </p>
-            </div>
-            <div className="speedometer">
-              <svg viewBox="0 0 180 110" aria-hidden="true">
-                <path className="speed-arc" d="M18 94a74 74 0 1 1 144 0" />
-                <path
-                  className="speed-arc-fill"
-                  d="M18 94a74 74 0 1 1 144 0"
-                  pathLength="100"
-                  strokeDasharray={`${Math.min(100, (state.speed / 200) * 100)} 100`}
-                />
-                {Array.from({ length: 13 }, (_, i) => {
-                  const angle = ((165 + i * 22.5) * Math.PI) / 180;
-                  return (
-                    <line
-                      key={i}
-                      x1={90 + Math.cos(angle) * 63}
-                      y1={75 + Math.sin(angle) * 63}
-                      x2={90 + Math.cos(angle) * (i % 3 === 0 ? 55 : 59)}
-                      y2={75 + Math.sin(angle) * (i % 3 === 0 ? 55 : 59)}
-                    />
-                  );
-                })}
-              </svg>
-              <div className="speed-readout">
-                <strong>
-                  {Math.round(state.speed).toString().padStart(2, "0")}
-                </strong>
-                <span>km/h</span>
-              </div>
-              <div className="gear">
-                <span>GEAR</span>
-                <b>
-                  {state.gear < 0 ? "R" : state.gear === 0 ? "N" : state.gear}
-                </b>
-                <i>AUTO</i>
-              </div>
-            </div>
-          </div>
-          <div className="race-controls">
-            <span>
-              <kbd>W A S D</kbd> 驾驶
-            </span>
-            <span title="Space 起漂；点按 A/D 微调，松开方向渐渐回正，反打收角。同向长按过久可能失控。">
-              <kbd>Space</kbd> {state.driftAngle > 60 ? "失控" : "漂移"}
-              {state.driftAngle > 5 ? ` ${Math.round(state.driftAngle)}°` : ""}
-            </span>
-            <span>
-              <kbd>R</kbd> 重置 +3s
-            </span>
-            <span>
-              <kbd>C</kbd> 镜头
-            </span>
-            <span>
-              <kbd>Esc</kbd> 暂停
-            </span>
-          </div>
-          <TouchControls game={game.current} />
-        </>
-      )}
-      {phase === "paused" && !settingsOpen && (
-        <div className="modal-scrim">
-          <section className="dialog pause-dialog">
-            <div className="dialog-symbol">
-              <Icon name="pause" size={28} />
-            </div>
-            <p className="eyebrow">TAKE A BREATH</p>
-            <h2>让风等一会儿</h2>
-            <p>比赛已暂停，下一段海岸仍在等你。</p>
-            <button className="primary" onClick={pause}>
-              继续竞速 <Icon name="arrow" />
+          <button className="secondary" onClick={() => showSettings()}>
+            <Icon name="settings" size={17} />
+            设置
+          </button>
+          <div className="dialog-links">
+            <button onClick={start} disabled={busy}>
+              重新开始
             </button>
-            <button className="secondary" onClick={showSettings}>
-              驾驶设置
-            </button>
-            <div className="dialog-links">
-              <button onClick={start}>重新出发</button>
-              <button onClick={menu}>返回主菜单</button>
-            </div>
-          </section>
-        </div>
-      )}
-      {phase === "finished" && state && !settingsOpen && (
-        <div className="modal-scrim result-scrim">
-          <section className="dialog results">
-            <div className="finish-icon">
-              <Icon name="flag" size={35} />
-            </div>
-            <p className="eyebrow">COASTLINE, CONQUERED.</p>
-            <h2>
-              {state.previousBest === null || state.time < state.previousBest
-                ? "新的海岸纪录"
-                : "又一圈，新的风景"}
-            </h2>
-            <p>盐风海岸 · 单圈计时完成</p>
-            <div className="result-time">{formatTime(state.time)}</div>
-            <div className="result-stats">
-              <div>
-                <span>个人最佳</span>
-                <strong>{formatTime(state.best)}</strong>
-              </div>
-              <div>
-                <span>与此前最佳</span>
-                <strong
-                  className={
-                    state.previousBest !== null &&
-                    state.time < state.previousBest
-                      ? "improved"
-                      : ""
-                  }
-                >
-                  {state.previousBest === null
-                    ? "首次完赛"
-                    : `${state.time < state.previousBest ? "−" : "+"}${Math.abs(state.time - state.previousBest).toFixed(2)} s`}
-                </strong>
-              </div>
-            </div>
-            <button className="primary" onClick={start}>
-              再追一次风 <Icon name="arrow" />
-            </button>
-            <button className="text-button" onClick={menu}>
+            <button onClick={menu} disabled={busy}>
               返回主菜单
             </button>
-          </section>
-        </div>
+          </div>
+        </Modal>
+      )}
+      {phase === "finished" && state && !settingsOpen && !state.debugOpen && (
+        <Results
+          state={state}
+          vehicleName={vehicle.name}
+          start={start}
+          menu={menu}
+        />
       )}
       {settingsOpen && (
         <SettingsPanel
           settings={settings}
+          training={training}
+          initialTab={settingsTab}
+          switching={selection}
           change={change}
           close={() => setSettingsOpen(false)}
+        />
+      )}
+      {training && state && phase !== "loading" && phase !== "error" && (
+        <DebugPanel
+          state={state}
+          close={() => game.current?.setDebugOpen(false)}
+          pause={pause}
+          apply={async (tuning) => {
+            await game.current?.applyTuning(tuning);
+          }}
         />
       )}
     </main>
   );
 }
-function Minimap({ game, state }: { game: Game | null; state: Snapshot }) {
-  const track = game?.track;
-  if (!track) return null;
-  const xs = track.points.map((p) => p.x),
-    zs = track.points.map((p) => p.z),
+
+type Selection = {
+  selected: VehicleId;
+  change: (id: VehicleId) => void;
+  loading?: VehicleId | null;
+  progress?: number;
+  error?: string;
+};
+function VehiclePicker({
+  selected,
+  change,
+  loading,
+  progress,
+  error,
+}: Selection) {
+  const buttons = useRef<Partial<Record<VehicleId, HTMLButtonElement | null>>>(
+    {},
+  );
+  useEffect(() => {
+    buttons.current[loading ?? selected]?.scrollIntoView({
+      block: "nearest",
+      inline: "center",
+      behavior: "auto",
+    });
+  }, [selected, loading]);
+  return (
+    <div className="vehicle-selection">
+      <div className="vehicle-picker" role="group" aria-label="选择车辆">
+        {Object.values(VEHICLES).map((vehicle) => (
+          <button
+            key={vehicle.id}
+            ref={(node) => {
+              buttons.current[vehicle.id] = node;
+            }}
+            aria-label={`选择${vehicle.name}`}
+            aria-pressed={selected === vehicle.id}
+            aria-busy={loading === vehicle.id}
+            className={`${selected === vehicle.id ? "selected" : ""}${loading === vehicle.id ? " pending" : ""}`}
+            onClick={() => change(vehicle.id)}
+          >
+            <i style={{ background: vehicle.color }} aria-hidden="true" />
+            <span>
+              <strong>{vehicle.name}</strong>
+              <small>{vehicle.english}</small>
+            </span>
+            <span className="vehicle-check">
+              {loading === vehicle.id ? (
+                `${Math.round(progress ?? 0)}%`
+              ) : selected === vehicle.id ? (
+                <Icon name="check" size={17} />
+              ) : null}
+            </span>
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p className="vehicle-switch-error" role="alert">
+          {error}
+        </p>
+      )}
+      <span className="sr-only" role="status">
+        {loading
+          ? `正在载入${VEHICLES[loading].name}，${Math.round(progress ?? 0)}%`
+          : ""}
+      </span>
+    </div>
+  );
+}
+function routeShape(game: Game | null, size = 170) {
+  const points = game?.track?.points;
+  if (!points?.length) return null;
+  const xs = points.map((p) => p.x),
+    zs = points.map((p) => p.z),
     minX = Math.min(...xs),
-    minZ = Math.min(...zs),
-    scale = 170 / Math.max(Math.max(...xs) - minX, Math.max(...zs) - minZ);
+    minZ = Math.min(...zs);
+  const scale = size / Math.max(Math.max(...xs) - minX, Math.max(...zs) - minZ);
   const map = (x: number, z: number) => [
     25 + (x - minX) * scale,
     22 + (z - minZ) * scale,
   ];
-  const points = track.points
+  const line = points
     .filter((_, i) => i % 4 === 0)
     .map((p) => map(p.x, p.z).join(","))
     .join(" ");
-  const car = map(state.x, state.z);
-  const target = track.point(track.gateIndices[Math.min(7, state.checkpoint)]);
-  const gate = map(target.x, target.z);
-  const start = map(track.point(0).x, track.point(0).z);
+  return { map, line: line + " " + line.split(" ")[0] };
+}
+function RouteCard({
+  game,
+  training,
+}: {
+  game: Game | null;
+  training: boolean;
+}) {
+  const shape = routeShape(game);
   return (
-    <aside className="minimap">
+    <aside className="route-card" aria-label="当前赛道">
+      {shape && !training && (
+        <svg viewBox="0 0 220 215" aria-hidden="true">
+          <polyline points={shape.line} />
+        </svg>
+      )}
+      <div>
+        <p>{training ? "FREE PRACTICE" : "SALTWIND COAST"}</p>
+        <h2>{training ? "海风试车场" : "盐风海岸"}</h2>
+        <span>
+          {training ? "1,200 × 1,200 m" : "1.106 km"}
+          <i />
+          {training ? "自由驾驶" : "单圈计时"}
+        </span>
+      </div>
+    </aside>
+  );
+}
+function Minimap({ game, state }: { game: Game | null; state: Snapshot }) {
+  const track = game?.track,
+    shape = routeShape(game);
+  if (!track || !shape) return null;
+  const car = shape.map(state.x, state.z),
+    target = track.point(track.gateIndices[Math.min(7, state.checkpoint)]),
+    gate = shape.map(target.x, target.z);
+  return (
+    <aside className="minimap" aria-label="赛道地图">
       <div className="map-heading">
         <span>盐风海岸</span>
         <span>N ↑</span>
       </div>
-      <svg
-        viewBox="0 0 220 215"
-        aria-label="赛道地图，青色圆点为车辆，金色圆点为下一个检查点"
-      >
-        <polygon
-          className="map-coast"
-          points="15,195 15,13 207,13 207,140 151,157 140,185 89,201"
-        />
-        <polyline
-          className="map-road-under"
-          points={points + " " + points.split(" ")[0]}
-        />
-        <polyline
-          className="map-road"
-          points={points + " " + points.split(" ")[0]}
-        />
-        <rect
-          x={start[0] - 3}
-          y={start[1] - 3}
-          width="6"
-          height="6"
-          fill="#49665b"
-        />
-        <circle cx={gate[0]} cy={gate[1]} r="4" fill="#d39154" />
-        <circle className="map-car-halo" cx={car[0]} cy={car[1]} r="9" />
+      <svg viewBox="0 0 220 215" aria-label="车辆位置与下一个检查点">
+        <polyline className="map-road-under" points={shape.line} />
+        <polyline className="map-road" points={shape.line} />
+        <circle cx={gate[0]} cy={gate[1]} r="4" className="map-gate" />
+        <circle className="map-car-halo" cx={car[0]} cy={car[1]} r="10" />
         <path
           className="map-car"
           d="M0 -7 4.5 5 0 3-4.5 5Z"
           transform={`translate(${car[0]} ${car[1]}) rotate(${180 - (state.heading * 180) / Math.PI})`}
         />
       </svg>
-      <div className="map-caption">
-        <span /> 下一个检查点 <b>{Math.round(state.progress * 100)}%</b>
-      </div>
     </aside>
+  );
+}
+function RaceHud({
+  game,
+  state,
+  training,
+}: {
+  game: Game | null;
+  state: Snapshot;
+  training: boolean;
+}) {
+  return (
+    <>
+      <section
+        className={`timing${training ? " test-session" : ""}`}
+        aria-label={training ? "自由试驾" : "比赛计时"}
+      >
+        <div className="lap-label">
+          {training ? "自由试车" : "计时挑战"}
+          <span>{training ? "海风试车场" : "LAP 01 / 01"}</span>
+        </div>
+        {!training && (
+          <>
+            <div className="time-current">{formatTime(state.time)}</div>
+            <div className="time-best">
+              <span>最佳</span>
+              <strong>{timeLabel(state.best)}</strong>
+            </div>
+            <div className="race-progress" aria-hidden="true">
+              <span style={{ width: `${state.progress * 100}%` }} />
+            </div>
+            <div className="checkpoint-label">
+              检查点
+              <strong>
+                {Math.min(state.checkpoint, state.totalCheckpoints)}
+                <span> / {state.totalCheckpoints}</span>
+              </strong>
+            </div>
+            {state.customSetup && <div className="debug-lap-label">调校圈</div>}
+          </>
+        )}
+      </section>
+      {!training && <Minimap game={game} state={state} />}
+      <div className="hud-bottom">
+        <div
+          className={`wind-meter${state.boosting ? " boosting" : ""}${state.inWind ? " collecting" : ""}`}
+        >
+          <div>
+            <Icon name="wind" size={18} />
+            <span>
+              {state.boosting ? "乘风加速" : state.inWind ? "收集风能" : "风能"}
+            </span>
+            <strong>
+              {Math.round(state.energy)}
+              <small>%</small>
+            </strong>
+          </div>
+          <div className="energy-track">
+            <span style={{ width: `${state.energy}%` }} />
+          </div>
+        </div>
+        <div className="speedometer">
+          <svg viewBox="0 0 180 110" aria-hidden="true">
+            <path className="speed-arc" d="M18 94a74 74 0 1 1 144 0" />
+            <path
+              className="speed-arc-fill"
+              d="M18 94a74 74 0 1 1 144 0"
+              pathLength="100"
+              strokeDasharray={`${Math.min(100, (state.speed / 240) * 100)} 100`}
+            />
+            {Array.from({ length: 13 }, (_, i) => {
+              const angle = ((165 + i * 22.5) * Math.PI) / 180;
+              return (
+                <line
+                  key={i}
+                  x1={90 + Math.cos(angle) * 63}
+                  y1={75 + Math.sin(angle) * 63}
+                  x2={90 + Math.cos(angle) * (i % 3 === 0 ? 55 : 59)}
+                  y2={75 + Math.sin(angle) * (i % 3 === 0 ? 55 : 59)}
+                />
+              );
+            })}
+          </svg>
+          <div className="speed-readout">
+            <strong>
+              {Math.round(state.speed).toString().padStart(2, "0")}
+            </strong>
+            <span>km/h</span>
+          </div>
+          <div className="gear">
+            <span>GEAR</span>
+            <b>{state.gear < 0 ? "R" : state.gear === 0 ? "N" : state.gear}</b>
+            <i>AUTO</i>
+          </div>
+        </div>
+      </div>
+      {state.driftAngle > 8 && phaseDriving(state) && (
+        <div
+          className={`drift-indicator${state.driftAngle > 60 ? " spin" : ""}`}
+        >
+          {state.driftAngle > 60 ? "失控" : "漂移"}
+          <strong>
+            {Math.round(state.driftAngle)}
+            <small>°</small>
+          </strong>
+        </div>
+      )}
+    </>
+  );
+}
+function phaseDriving(state: Snapshot) {
+  return state.phase === "racing";
+}
+
+function Modal({
+  children,
+  labelledBy,
+  className = "",
+  close,
+}: {
+  children: React.ReactNode;
+  labelledBy: string;
+  className?: string;
+  close?: () => void;
+}) {
+  const ref = useRef<HTMLElement>(null),
+    closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.code === "Escape") {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        closeRef.current?.();
+      }
+      if (event.code === "Tab") {
+        const items = Array.from(
+          ref.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled),input:not(:disabled),select,summary,[tabindex="0"]',
+          ) ?? [],
+        ).filter(
+          (node) => node.getClientRects().length > 0 && node.tabIndex >= 0,
+        );
+        const first = items[0],
+          last = items[items.length - 1];
+        if (!first) {
+          event.preventDefault();
+          return;
+        }
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            document.activeElement === ref.current)
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (
+          !event.shiftKey &&
+          (document.activeElement === last ||
+            document.activeElement === ref.current)
+        ) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", key, true);
+    return () => {
+      window.removeEventListener("keydown", key, true);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+  return (
+    <div
+      className="modal-scrim"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) closeRef.current?.();
+      }}
+    >
+      <section
+        ref={ref}
+        className={`dialog ${className}`}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        onKeyDown={(event) => event.stopPropagation()}
+        onKeyUp={(event) => event.stopPropagation()}
+      >
+        {children}
+      </section>
+    </div>
+  );
+}
+export function Results({
+  state,
+  vehicleName,
+  start,
+  menu,
+}: {
+  state: Snapshot;
+  vehicleName: string;
+  start: () => void;
+  menu: () => void;
+}) {
+  const record =
+    !state.customSetup &&
+    (state.previousBest === null || state.time < state.previousBest);
+  return (
+    <Modal labelledBy="result-heading" className="results" close={menu}>
+      <div className={`finish-icon${record ? " new-record" : ""}`}>
+        <Icon name="flag" size={32} />
+      </div>
+      <p className="eyebrow">盐风海岸 · {vehicleName}</p>
+      <h2 id="result-heading">
+        {state.customSetup ? "调校圈完成" : record ? "新纪录" : "完赛"}
+      </h2>
+      <div className="result-time">{formatTime(state.time)}</div>
+      <div className="result-stats">
+        <div>
+          <span>个人最佳</span>
+          <strong>{timeLabel(state.best)}</strong>
+        </div>
+        <div>
+          <span>成绩差值</span>
+          <strong className={record ? "improved" : ""}>
+            {state.previousBest === null
+              ? "首次完赛"
+              : `${state.time < state.previousBest ? "−" : "+"}${Math.abs(state.time - state.previousBest).toFixed(2)} s`}
+          </strong>
+        </div>
+      </div>
+      {state.customSetup && <p className="result-note">调校圈不计入个人最佳</p>}
+      <button className="primary" onClick={start}>
+        再跑一圈 <Icon name="arrow" />
+      </button>
+      <button className="text-button" onClick={menu}>
+        返回主菜单
+      </button>
+    </Modal>
   );
 }
 function SettingsPanel({
   settings,
+  training,
+  initialTab,
+  switching,
   change,
   close,
 }: {
   settings: Settings;
+  training: boolean;
+  initialTab: SettingsTab;
+  switching: Selection;
   change: (s: Settings) => void;
   close: () => void;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-    const fn = (e: KeyboardEvent) => {
-      if (e.code === "Escape") {
-        e.stopImmediatePropagation();
-        close();
-      }
-      if (e.code === "Tab") {
-        const items =
-          ref.current?.querySelectorAll<HTMLElement>("button,input");
-        if (items?.length) {
-          const first = items[0],
-            last = items[items.length - 1];
-          if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-    window.addEventListener("keydown", fn, true);
-    return () => window.removeEventListener("keydown", fn, true);
-  }, []);
+  const [tab, setTab] = useState(initialTab);
+  const tabs: [SettingsTab, string][] = [
+    ["driving", "驾驶"],
+    ["display", "画面与声音"],
+    ["vehicles", "车辆"],
+    ["controls", "操作指南"],
+  ];
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   return (
-    <div className="modal-scrim">
-      <section
-        ref={ref}
-        className="dialog settings"
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-heading"
-      >
+    <Modal labelledBy="settings-heading" className="settings" close={close}>
+      <header className="dialog-header">
+        <div>
+          <p className="eyebrow">CLOUDCAPE RALLY</p>
+          <h2 id="settings-heading">设置</h2>
+        </div>
         <button
           className="close-button icon-button"
           aria-label="关闭设置"
@@ -673,138 +1035,277 @@ function SettingsPanel({
         >
           <Icon name="close" />
         </button>
-        <p className="eyebrow">MAKE YOURSELF AT HOME</p>
-        <h2 id="settings-heading">随风调校</h2>
-        <p>找到适合你的驾驶节奏。</p>
-        <div className="setting-row">
-          <label>
-            画面质量<small>阴影与渲染清晰度</small>
-          </label>
-          <div className="segmented">
-            {(["low", "medium", "high"] as const).map((q, i) => (
-              <button
-                aria-pressed={settings.quality === q}
-                className={settings.quality === q ? "selected" : ""}
-                key={q}
-                onClick={() => change({ ...settings, quality: q })}
-              >
-                {["低", "中", "高"][i]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="setting-row">
-          <label htmlFor="volume">
-            游戏音量<small>{Math.round(settings.volume * 100)}%</small>
-          </label>
-          <input
-            id="volume"
-            aria-label="游戏音量"
-            type="range"
-            min="0"
-            max="1"
-            step=".05"
-            value={settings.volume}
-            onChange={(e) =>
-              change({ ...settings, volume: Number(e.target.value) })
-            }
-          />
-        </div>
-        <div className="setting-row">
-          <label>
-            镜头距离<small>也可以按 C 切换</small>
-          </label>
-          <div className="segmented">
-            <button
-              className={settings.camera === "near" ? "selected" : ""}
-              onClick={() => change({ ...settings, camera: "near" })}
-            >
-              近景
-            </button>
-            <button
-              className={settings.camera === "far" ? "selected" : ""}
-              onClick={() => change({ ...settings, camera: "far" })}
-            >
-              远景
-            </button>
-          </div>
-        </div>
-        <div className="setting-row">
-          <label htmlFor="assists">
-            驾驶辅助<small>平滑转向与轻度防侧滑</small>
-          </label>
+      </header>
+      <nav className="settings-tabs" role="tablist" aria-label="设置分类">
+        {tabs.map(([id, label], index) => (
           <button
-            id="assists"
-            role="switch"
-            aria-checked={settings.assists}
-            className={`switch ${settings.assists ? "on" : ""}`}
-            onClick={() => change({ ...settings, assists: !settings.assists })}
+            key={id}
+            ref={(node) => {
+              tabRefs.current[index] = node;
+            }}
+            role="tab"
+            id={`tab-${id}`}
+            aria-controls={`panel-${id}`}
+            aria-selected={tab === id}
+            tabIndex={tab === id ? 0 : -1}
+            onClick={() => setTab(id)}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+              else if (event.key === "ArrowLeft")
+                next = (index + tabs.length - 1) % tabs.length;
+              else if (event.key === "Home") next = 0;
+              else if (event.key === "End") next = tabs.length - 1;
+              else return;
+              event.preventDefault();
+              setTab(tabs[next][0]);
+              tabRefs.current[next]?.focus();
+            }}
           >
-            <span />
+            {label}
           </button>
-        </div>
-        <div className="settings-controls">
-          <div>
-            <kbd>W ↑</kbd> 油门
-          </div>
-          <div>
-            <kbd>S ↓</kbd> 刹车 / 倒车
-          </div>
-          <div>
-            <kbd>A D</kbd> 转向
-          </div>
-          <div>
-            <kbd>Space</kbd> 手刹漂移
-          </div>
-          <div>
-            <kbd>Shift</kbd> 风道加速
-          </div>
-          <div>
-            <kbd>R</kbd> 安全重置 +3s
-          </div>
-        </div>
+        ))}
+      </nav>
+      <div
+        className="settings-body"
+        role="tabpanel"
+        id={`panel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+        tabIndex={0}
+      >
+        {tab === "driving" && (
+          <>
+            <SettingRow label="驾驶视角">
+              <div className="segmented" role="group" aria-label="驾驶视角">
+                {CAMERA_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    aria-pressed={settings.camera === mode}
+                    className={settings.camera === mode ? "selected" : ""}
+                    onClick={() => change({ ...settings, camera: mode })}
+                  >
+                    {mode === "far"
+                      ? "远景"
+                      : mode === "near"
+                        ? "近景"
+                        : "车内"}
+                  </button>
+                ))}
+              </div>
+            </SettingRow>
+            <SettingRow label="驾驶辅助" htmlFor="assists">
+              <Toggle
+                id="assists"
+                checked={settings.assists}
+                change={() =>
+                  change({ ...settings, assists: !settings.assists })
+                }
+              />
+            </SettingRow>
+            <SettingRow label="操作方式">
+              <div className="segmented" role="group" aria-label="操作方式">
+                {(["auto", "touch", "keyboard"] as const).map((mode, index) => (
+                  <button
+                    key={mode}
+                    aria-pressed={settings.controls === mode}
+                    className={settings.controls === mode ? "selected" : ""}
+                    onClick={() => change({ ...settings, controls: mode })}
+                  >
+                    {["自动", "触屏", "键盘"][index]}
+                  </button>
+                ))}
+              </div>
+            </SettingRow>
+            <SettingRow label="触屏自动油门" htmlFor="auto-throttle">
+              <Toggle
+                id="auto-throttle"
+                checked={settings.autoThrottle}
+                change={() =>
+                  change({ ...settings, autoThrottle: !settings.autoThrottle })
+                }
+              />
+            </SettingRow>
+          </>
+        )}
+        {tab === "display" && (
+          <>
+            <SettingRow label="画面质量">
+              <div className="segmented" role="group" aria-label="画面质量">
+                {(["low", "medium", "high"] as const).map((quality, index) => (
+                  <button
+                    key={quality}
+                    aria-pressed={settings.quality === quality}
+                    className={settings.quality === quality ? "selected" : ""}
+                    onClick={() => change({ ...settings, quality })}
+                  >
+                    {["流畅", "均衡", "精细"][index]}
+                  </button>
+                ))}
+              </div>
+            </SettingRow>
+            <SettingRow label="游戏音量" htmlFor="volume">
+              <div className="volume-control">
+                <input
+                  id="volume"
+                  aria-label="游戏音量"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step=".05"
+                  value={settings.volume}
+                  onChange={(e) =>
+                    change({ ...settings, volume: Number(e.target.value) })
+                  }
+                />
+                <output htmlFor="volume">
+                  {Math.round(settings.volume * 100)}%
+                </output>
+              </div>
+            </SettingRow>
+          </>
+        )}
+        {tab === "vehicles" && (
+          <>
+            <VehiclePicker {...switching} />
+            <p className="settings-note">换车后回到起点</p>
+          </>
+        )}
+        {tab === "controls" && <ControlsGuide training={training} />}
+      </div>
+      <footer className="settings-footer">
+        <span>即时生效</span>
         <button className="primary" onClick={close}>
-          调校完成 <Icon name="arrow" />
+          完成 <Icon name="check" size={18} />
         </button>
-      </section>
+      </footer>
+    </Modal>
+  );
+}
+function SettingRow({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="setting-row">
+      {htmlFor ? (
+        <label htmlFor={htmlFor}>{label}</label>
+      ) : (
+        <span>{label}</span>
+      )}
+      {children}
     </div>
   );
 }
-function TouchControls({ game }: { game: Game | null }) {
-  const set = (key: keyof Input, value: number | boolean) => {
-    if (game) game.input.touch = { ...game.input.touch, [key]: value };
-  };
-  const control = (
-    key: keyof Input,
-    value: number | boolean,
-    label: string,
-  ) => (
+function Toggle({
+  id,
+  checked,
+  change,
+}: {
+  id: string;
+  checked: boolean;
+  change: () => void;
+}) {
+  return (
     <button
-      aria-label={label}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        set(key, value);
-      }}
-      onPointerUp={() => set(key, typeof value === "boolean" ? false : 0)}
-      onPointerCancel={() => set(key, typeof value === "boolean" ? false : 0)}
-      onLostPointerCapture={() =>
-        set(key, typeof value === "boolean" ? false : 0)
-      }
+      id={id}
+      role="switch"
+      aria-checked={checked}
+      className={`switch${checked ? " on" : ""}`}
+      onClick={change}
     >
-      {label}
+      <span />
     </button>
   );
+}
+function ControlsGuide({ training }: { training: boolean }) {
+  const controls = [
+    ["A", "油门"],
+    ["Z", "刹车 / 倒车"],
+    ["←  →", "转向"],
+    ["Space", "手刹 / 漂移"],
+    ["Shift", "风能加速"],
+    ["C", "切换视角"],
+    ["H", "车灯"],
+    ["O", "敞篷开合"],
+    ["R", training ? "回到起点" : "返回检查点 +3s"],
+    ["Esc", "暂停"],
+  ];
   return (
-    <div className="touch-controls">
-      <div>
-        {control("steer", -1, "←")}
-        {control("steer", 1, "→")}
+    <>
+      <div className="controls-guide">
+        {controls.map(([key, label]) => (
+          <div key={key}>
+            <span>{label}</span>
+            <kbd>{key}</kbd>
+          </div>
+        ))}
       </div>
-      <div>
-        {control("boost", true, "风")}
-        {control("brake", 1, "刹车")}
-        {control("throttle", 1, "油门")}
+      <div className="touch-guide">
+        <Icon name="car" size={21} />
+        <p>
+          触屏：左侧转向，右侧控制踏板。
+          <br />
+          自动油门可在驾驶设置中开启。
+        </p>
       </div>
-    </div>
+    </>
+  );
+}
+
+export function LoadingScreen({ loaded }: { loaded: number }) {
+  return (
+    <section className="loading-screen" aria-label="正在载入游戏">
+      <div className="loading-brand">
+        <span className="loading-bird">
+          <Bird />
+        </span>
+        <span>CLOUDCAPE RALLY</span>
+      </div>
+      <div className="loading-content">
+        <h1>云岬环线</h1>
+        <div className="loading-status">
+          <span>正在载入</span>
+          <strong>
+            {Math.round(loaded)}
+            <small>%</small>
+          </strong>
+        </div>
+        <div
+          className="load-track"
+          role="progressbar"
+          aria-label="游戏载入进度"
+          aria-valuenow={Math.round(loaded)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span style={{ width: `${loaded}%` }} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ErrorDialog({ error }: { error: string }) {
+  return (
+    <Modal labelledBy="error-heading" className="error-dialog">
+      <div className="dialog-symbol">
+        <Icon name="reset" size={30} />
+      </div>
+      <h2 id="error-heading">暂时无法出发</h2>
+      <p className="dialog-caption">请重新载入游戏后再试。</p>
+      <button className="primary" onClick={() => location.reload()}>
+        重新载入 <Icon name="arrow" />
+      </button>
+      <details className="error-details">
+        <summary>查看详情</summary>
+        <p>{error}</p>
+        <p>请确认浏览器支持 WebGL 2 并已开启硬件加速。</p>
+      </details>
+    </Modal>
   );
 }

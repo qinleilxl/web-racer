@@ -1,3 +1,9 @@
+import type { PhysicsTelemetry, PhysicsTuning } from "./Tuning";
+import type { CameraMode } from "./CameraViews";
+import type { MapId } from "./MapMode";
+import { touchAvailable, type ControlMode } from "./TouchInput";
+import type { VehicleId } from "./Vehicles";
+import type { RoofStatus } from "./ConvertibleRoof";
 export type Phase =
   | "loading"
   | "menu"
@@ -9,8 +15,10 @@ export type Phase =
 export type Settings = {
   quality: "low" | "medium" | "high";
   volume: number;
-  camera: "near" | "far";
+  camera: CameraMode;
   assists: boolean;
+  controls: ControlMode;
+  autoThrottle: boolean;
 };
 export type Input = {
   throttle: number;
@@ -20,6 +28,17 @@ export type Input = {
   boost: boolean;
 };
 export type Snapshot = {
+  roof?: { progress: number; targetOpen: boolean; status: RoofStatus };
+  mapId: MapId;
+  vehicleId: VehicleId;
+  vehicleLoading?: VehicleId | null;
+  vehicleLoadProgress?: number;
+  vehicleSwitchError?: string;
+  debugOpen: boolean;
+  tuning: PhysicsTuning;
+  telemetry: PhysicsTelemetry | null;
+  customSetup: boolean;
+  tuningBusy: boolean;
   phase: Phase;
   loaded: number;
   error: string;
@@ -51,28 +70,45 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: 0.35,
   camera: "far",
   assists: true,
+  controls: "auto",
+  autoThrottle: false,
 };
 export function loadSettings(): Settings {
+  const defaultQuality = touchAvailable() ? "medium" : "high";
   try {
     const s = JSON.parse(localStorage.getItem("cloudcape.settings") || "{}");
     return {
       quality: ["low", "medium", "high"].includes(s.quality)
         ? s.quality
-        : "high",
+        : defaultQuality,
       volume:
         typeof s.volume === "number" && Number.isFinite(s.volume)
           ? Math.max(0, Math.min(1, s.volume))
           : 0.35,
-      camera: s.camera === "near" ? "near" : "far",
+      camera:
+        s.camera === "cockpit"
+          ? "cockpit"
+          : s.camera === "near"
+            ? "near"
+            : "far",
       assists: s.assists !== false,
+      controls: ["auto", "touch", "keyboard"].includes(s.controls)
+        ? s.controls
+        : "auto",
+      autoThrottle: s.autoThrottle === true,
     };
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, quality: defaultQuality };
   }
 }
-export function loadBest(): number | null {
+// Wider racing lines have their own record; keep the original 8m record saved.
+export const BEST_STORAGE_KEY = "cloudcape.best.coast12.v1";
+export function bestStorageKey(id: VehicleId = "sparrow") {
+  return id === "sparrow" ? BEST_STORAGE_KEY : `${BEST_STORAGE_KEY}.${id}`;
+}
+export function loadBest(id: VehicleId = "sparrow"): number | null {
   try {
-    const b = Number(localStorage.getItem("cloudcape.best"));
+    const b = Number(localStorage.getItem(bestStorageKey(id)));
     return b > 0 && Number.isFinite(b) ? b : null;
   } catch {
     return null;

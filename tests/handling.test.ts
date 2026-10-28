@@ -34,7 +34,7 @@ test("keyboard hold duration gives distinct controlled drift angles at 60 and 12
             {
               ...throttle,
               steer: i < Math.round(hold * hz) ? 1 : 0,
-              handbrake: true,
+              handbrake: i < Math.round(0.1 * hz),
             },
             true,
             false,
@@ -76,7 +76,7 @@ test("keyboard hold duration gives distinct controlled drift angles at 60 and 12
   );
 });
 
-test("countersteer reduces a held drift and releasing the handbrake restores grip", async () => {
+test("countersteer reduces a tap-initiated drift and neutral steering restores grip", async () => {
   const flat = flatCircuit(),
     p = await Physics.create(flat.road, flat.track);
   try {
@@ -86,22 +86,15 @@ test("countersteer reduces a held drift and releasing the handbrake restores gri
     for (let i = 0; i < 96; i++)
       p.step(
         PHYSICS_STEP,
-        { ...throttle, steer: 1, handbrake: true },
+        { ...throttle, steer: 1, handbrake: i < 12 },
         true,
         false,
       );
-    for (let i = 0; i < 48; i++)
-      p.step(PHYSICS_STEP, { ...throttle, handbrake: true }, true, false);
+    for (let i = 0; i < 48; i++) p.step(PHYSICS_STEP, throttle, true, false);
     const held = Math.abs(p.slipAngle);
     for (let i = 0; i < 30; i++)
-      p.step(
-        PHYSICS_STEP,
-        { ...throttle, steer: -1, handbrake: true },
-        true,
-        false,
-      );
-    for (let i = 0; i < 48; i++)
-      p.step(PHYSICS_STEP, { ...throttle, handbrake: true }, true, false);
+      p.step(PHYSICS_STEP, { ...throttle, steer: -1 }, true, false);
+    for (let i = 0; i < 48; i++) p.step(PHYSICS_STEP, throttle, true, false);
     const corrected = Math.abs(p.slipAngle);
     assert.ok(
       corrected < held * 0.7,
@@ -220,19 +213,13 @@ test("tapping either direction during a drift changes slip, while neutral input 
       for (let i = 0; i < 90; i++)
         p.step(
           PHYSICS_STEP,
-          { ...throttle, steer: 1, handbrake: true },
+          { ...throttle, steer: 1, handbrake: i < 12 },
           true,
           false,
         );
       for (let i = 0; i < 12; i++)
-        p.step(
-          PHYSICS_STEP,
-          { ...throttle, steer: tap, handbrake: true },
-          true,
-          false,
-        );
-      for (let i = 0; i < 30; i++)
-        p.step(PHYSICS_STEP, { ...throttle, handbrake: true }, true, false);
+        p.step(PHYSICS_STEP, { ...throttle, steer: tap }, true, false);
+      for (let i = 0; i < 30; i++) p.step(PHYSICS_STEP, throttle, true, false);
       angles.push((Math.abs(p.slipAngle) * 180) / Math.PI);
     }
     assert.ok(
@@ -240,25 +227,21 @@ test("tapping either direction during a drift changes slip, while neutral input 
       `drift taps did not adjust slip: ${angles}`,
     );
     const before = p.driftTargetAngle;
-    for (let i = 0; i < 12; i++)
-      p.step(PHYSICS_STEP, { ...throttle, handbrake: true }, true, false);
+    for (let i = 0; i < 12; i++) p.step(PHYSICS_STEP, throttle, true, false);
     assert.ok(
       p.driftTargetAngle < before * 1.05 && p.driftTargetAngle > before * 0.6,
       "neutral input snapped instead of decaying",
     );
-    for (let i = 0; i < 228; i++)
-      p.step(PHYSICS_STEP, { ...throttle, handbrake: true }, true, false);
+    for (let i = 0; i < 228; i++) p.step(PHYSICS_STEP, throttle, true, false);
     assert.ok(
       Math.abs(p.slipAngle) < (4 * Math.PI) / 180 && !p.drifting,
-      "holding Space without direction did not restore grip",
+      "neutral steering did not restore grip after the handbrake tap",
     );
     assert.ok(
       p.forwardSpeed > p.speed * 0.98 && p.contacts >= 3,
       "neutral drift recovery lost forward traction",
     );
-    console.log(
-      JSON.stringify({ slipAfter100msTapAnd250msSettle: angles }),
-    );
+    console.log(JSON.stringify({ slipAfter100msTapAnd250msSettle: angles }));
   } finally {
     p.dispose();
     f.road.geometry.dispose();
@@ -282,7 +265,7 @@ test("holding a drift direction beyond the grip range can spin the car on both s
       for (let i = 0; i < 480; i++) {
         p.step(
           PHYSICS_STEP,
-          { ...throttle, steer: direction, handbrake: true },
+          { ...throttle, steer: direction, handbrake: i < 12 },
           true,
           false,
         );

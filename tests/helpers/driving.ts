@@ -7,6 +7,7 @@ import {
 } from "three";
 import type { Physics } from "../../src/game/Physics";
 import { Track } from "../../src/game/Track";
+import { PHYSICS_STEP } from "../../src/game/Driving";
 export const parked = {
   throttle: 0,
   brake: 0,
@@ -76,7 +77,14 @@ export function curvedCircuit(radius = 45, bend = 1) {
 }
 
 /** Initial conditions only; subsequent driving always uses forces and the native controller. */
-export function launch(p: Physics, kmh: number, yaw: number) {
+export function launch(
+  p: Physics,
+  kmh: number,
+  yaw: number,
+  input = { ...parked, handbrake: false },
+) {
+  // Release the settling fixture's parking brake before setting initial motion.
+  p.step(PHYSICS_STEP, input, true, false);
   const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), yaw);
   const v = new Vector3(0, 0, 1).applyQuaternion(q).multiplyScalar(kmh / 3.6);
   const J = p.J,
@@ -86,6 +94,7 @@ export function launch(p: Physics, kmh: number, yaw: number) {
   const bodies = p.system.GetBodyInterface();
   bodies.SetRotation(p.body.GetID(), rotation, J.EActivation_Activate);
   bodies.SetLinearAndAngularVelocity(p.body.GetID(), velocity, zero);
-  for (let i = 0; i < 4; i++) p.wheel(i).SetAngularVelocity(kmh / 3.6 / 0.433);
+  for (let i = 0; i < 4; i++)
+    p.wheel(i).SetAngularVelocity(kmh / 3.6 / p.geometry.radius);
   [rotation, velocity, zero].forEach((o) => J.destroy(o));
 }

@@ -1,0 +1,132 @@
+{
+  "glb_triangles_unique_mesh_data": 1092122,
+  "vehicle_triangles_instanced": 1226390,
+  "mesh_primitives": 764,
+  "animation_clips": [
+    {
+      "name": "Suspension",
+      "channels": 48
+    },
+    {
+      "name": "Combined",
+      "channels": 55
+    },
+    {
+      "name": "Steering",
+      "channels": 3
+    },
+    {
+      "name": "Drive",
+      "channels": 4
+    }
+  ],
+  "textures": 6,
+  "punctual_lights": 2,
+  "wheelbase_m": 2.46,
+  "tire_diameter_m": 0.79,
+  "roof_height_m": 1.723093867301941,
+  "controls_and_spring_endpoints": "passed at combined extremes",
+  "suspension_travel_m": [
+    -0.075,
+    0.035
+  ],
+  "steering_limit_deg": 28,
+  "steering_ratio": 12,
+  "passenger_cavity": "PASS: no baked body vertices in tested central open volume above floor; not a whole-cabin collision proof.",
+  "rack_mounts": [
+    {
+      "pad": "E rack embedded rubber deck foot",
+      "x": 1.4450000524520874,
+      "y": -0.3100000023841858,
+      "surface_z": 1.0883256196975708,
+      "pad_center_z": 1.0923255681991577,
+      "center_above_surface_m": 0.003999948501586914,
+      "expected_center_offset_m": 0.004,
+      "tolerance_m": 0.003
+    },
+    {
+      "pad": "E rack embedded rubber deck foot.001",
+      "x": 1.4450000524520874,
+      "y": 0.3100000023841858,
+      "surface_z": 1.0883337259292603,
+      "pad_center_z": 1.0923336744308472,
+      "center_above_surface_m": 0.003999948501586914,
+      "expected_center_offset_m": 0.004,
+      "tolerance_m": 0.003
+    },
+    {
+      "pad": "E rack embedded rubber deck foot.002",
+      "x": 1.6950000524520874,
+      "y": -0.3100000023841858,
+      "surface_z": 0.9665311574935913,
+      "pad_center_z": 0.970531165599823,
+      "center_above_surface_m": 0.0040000081062316895,
+      "expected_center_offset_m": 0.004,
+      "tolerance_m": 0.003
+    },
+    {
+      "pad": "E rack embedded rubber deck foot.003",
+      "x": 1.6950000524520874,
+      "y": 0.3100000023841858,
+      "surface_z": 0.966548502445221,
+      "pad_center_z": 0.9705485105514526,
+      "center_above_surface_m": 0.0040000081062316895,
+      "expected_center_offset_m": 0.004,
+      "tolerance_m": 0.003
+    }
+  ],
+  "rack_actual_mesh_bounds": {
+    "E joined welded luggage rack": {
+      "x": [
+        1.3912904262542725,
+        1.748727560043335
+      ],
+      "z": [
+        0.9718862771987915,
+        1.174359679222107
+      ],
+      "connected_components": 1,
+      "component_vertex_counts": [
+        71858
+      ]
+    }
+  },
+  "anatomy_validation": {
+    "status": "PASS",
+    "variant": "approved E",
+    "blender_version": "4.3.2",
+    "checks": [
+      "central passenger-volume body vertices",
+      "exactly four E feet against baked Ivory_Bodywork",
+      "deck foot center offset +0.004 m \u00b10.003 m",
+      "single connected welded rack mesh",
+      "rack max X <1.80 m and max Z <1.25 m"
+    ]
+  },
+  "source_rebuild": "Fresh E build, material bake and rig/export executed; same low-refraction glass setting authored in build_E.py and synchronized in saved artifacts.",
+  "pipeline_artifact_presence": {
+    "Sparrow_E_Final_Static.blend": true,
+    "Sparrow_E_Final_Textured.blend": true,
+    "Sparrow_One_E_Final.blend": true,
+    "Sparrow_One_E_Final.glb": true
+  },
+  "independent_validation": {
+    "status": "PASS",
+    "source": "validation_hifi.json",
+    "completed": true,
+    "issue_count": 0
+  },
+  "version": "E approved shape final",
+  "reference_landmark_units": "Wheelbase 2.46m, hand-traced reference curves; not engineering metrology",
+  "glass_ior": 1.1,
+  "source_files_sha256": {
+    "panel_detail_E.py": "31722a4002a1726b191ebd32a66d9a154d6afafd8f30c2cfcb1438d79d90a502",
+    "build_E.py": "b5b6af49f9aa3162f3f96361bbda10474b4bb5cdabd60007a7b76a9415305a07",
+    "reference_curves.py": "bae4b6212b5ab8c530a0836214e8372ee88a1f2587c41024e49f4728d5b564ea",
+    "bake_materials.py": "78c355e442fc8cda1186751c47d83632d05b21ec3e299a62a7472f435d2ea464",
+    "rig_hifi.py": "e17731bf2b04c019145aeb64b4f4da996c0de0c5ef5638037c4fb8321e1bcc95",
+    "trim_E.py": "9c380a94588d1ce1ba48bcb3cb9cbc0921e0b657b1e55c3c28e1b27fa5a4e6b7",
+    "interior.py": "b0b3bc2ff0ab5b1bdee77fc69692ed2f2afd864739ed131fb87a4be309b763ea",
+    "wheels.py": "89ba1740c2e5b90bdb99048431f882ec7eb2f7a13163addf631e5a0a70680736"
+  }
+}
