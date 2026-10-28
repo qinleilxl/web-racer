@@ -384,8 +384,10 @@ test("vehicle choice, tuning and personal records remain isolated and survive re
   const url = new URL(
     vehicleURL("https://example.com/?map=test&quality=low#play", "scarlet"),
   );
-  assert.equal(url.searchParams.get("map"), "test");
-  assert.equal(url.searchParams.get("car"), "scarlet");
+  assert.equal(url.searchParams.get("map"), null);
+  assert.equal(url.searchParams.get("car"), null);
+  assert.equal(url.searchParams.get("quality"), "low");
+  assert.equal(vehicleFromSearch(""), "scarlet");
   assert.equal(url.hash, "#play");
   const sparrow = { ...vehicleDefaults(), torque: 470 };
   const scarlet = { ...setup, torque: 650 };

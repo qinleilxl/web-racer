@@ -1,6 +1,7 @@
 import type { VehicleId } from "./Vehicles";
 import type { CarAudioState } from "./AudioProfiles";
 import { VehicleVoice } from "./VehicleVoice";
+import { takePrimedAudio } from "./AudioUnlock";
 
 export class GameAudio {
   private context?: AudioContext;
@@ -23,7 +24,7 @@ export class GameAudio {
   async start() {
     if (this.disposed) return;
     if (!this.context) {
-      this.context = new AudioContext();
+      this.context = takePrimedAudio() ?? new AudioContext();
       this.voice = new VehicleVoice(this.context, this.vehicle);
     }
     if (this.context.state === "suspended") await this.context.resume();

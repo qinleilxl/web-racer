@@ -1,12 +1,16 @@
 export type MapId = "coast" | "test";
 
 export function mapFromSearch(search: string): MapId {
-  return new URLSearchParams(search).get("map") === "test" ? "test" : "coast";
+  const legacy = new URLSearchParams(search).get("map");
+  if (legacy !== null) return legacy === "test" ? "test" : "coast";
+  try { return sessionStorage.getItem("cloudcape.map") === "test" ? "test" : "coast"; }
+  catch { return "coast"; }
 }
 
 export function mapURL(href: string, map: MapId) {
   const url = new URL(href);
-  if (map === "test") url.searchParams.set("map", "test");
-  else url.searchParams.delete("map");
+  try { sessionStorage.setItem("cloudcape.map", map); } catch { /* Private storage. */ }
+  url.searchParams.delete("map");
+  url.searchParams.delete("car");
   return url.href;
 }

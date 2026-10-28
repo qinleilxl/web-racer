@@ -134,13 +134,22 @@ test("the entire proving pad stays smooth across its old diagonal mesh seam", as
   }
 });
 
-test("debug access is limited to the proving ground and map navigation preserves unrelated URL state", async () => {
+test("debug access is limited to the proving ground and clean map navigation retains its session", async (t) => {
+  const old = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  const session = new Map<string, string>();
+  Object.defineProperty(globalThis, "sessionStorage", {configurable:true,value:{
+    getItem:(key:string) => session.get(key) ?? null,
+    setItem:(key:string,value:string) => session.set(key,value),
+  }});
+  t.after(() => { if (old) Object.defineProperty(globalThis,"sessionStorage",old); else Reflect.deleteProperty(globalThis,"sessionStorage"); });
   assert.equal(mapFromSearch(""), "coast");
   assert.equal(mapFromSearch("?map=unknown"), "coast");
   assert.equal(mapFromSearch("?map=test"), "test");
   const testURL = mapURL("https://example.com/game?quality=low#play", "test");
-  assert.equal(new URL(testURL).searchParams.get("map"), "test");
+  assert.equal(new URL(testURL).searchParams.get("map"), null);
+  assert.equal(mapFromSearch(""), "test");
   const coastURL = new URL(mapURL(testURL, "coast"));
+  assert.equal(mapFromSearch(""), "coast");
   assert.equal(coastURL.searchParams.has("map"), false);
   assert.equal(coastURL.searchParams.get("quality"), "low");
   assert.equal(coastURL.hash, "#play");

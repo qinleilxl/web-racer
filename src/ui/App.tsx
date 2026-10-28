@@ -1,16 +1,21 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { TouchControls, useTouchCapability } from "./TouchControls";
 import { touchControlsEnabled } from "../game/TouchInput";
-import { Game } from "../game/Game";
-import { DebugPanel } from "./DebugPanel";
-import { CAMERA_LABELS, CAMERA_MODES } from "../game/CameraViews";
-import { VEHICLES, type VehicleId } from "../game/Vehicles";
+import type { Game } from "../game/Game";
+import { CAMERA_LABELS, CAMERA_MODES } from "../game/CameraModes";
+import { VEHICLES, vehicleFromSearch, vehicleURL, type VehicleId } from "../game/Vehicles";
+import { mapFromSearch, mapURL } from "../game/MapMode";
+import type { Showroom } from "../game/Showroom";
+import { primeGameAudio, releasePrimedAudio } from "../game/AudioUnlock";
 import {
   formatTime,
   loadSettings,
+  loadBest,
   type Settings,
   type Snapshot,
 } from "../game/types";
+
+const DebugPanel = lazy(() => import("./DebugPanel").then((m) => ({ default: m.DebugPanel })));
 
 type IconName =
   | "wind"
@@ -110,12 +115,29 @@ const timeLabel = (time: number | null) =>
 export default function App() {
   const host = useRef<HTMLDivElement>(null),
     game = useRef<Game | null>(null);
+  const showroomHost = useRef<HTMLDivElement>(null), showroom = useRef<Showroom | null>(null);
   const [state, setState] = useState<Snapshot | null>(null);
   const [settings, setSettings] = useState(loadSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("driving");
   const [garage, setGarage] = useState(false);
   const [engineError, setEngineError] = useState("");
+  const [initialSelection] = useState(() => {
+    const vehicle = vehicleFromSearch(location.search), map = mapFromSearch(location.search);
+    const cleanURL = vehicleURL(mapURL(location.href, map), vehicle);
+    if (cleanURL !== location.href) history.replaceState(history.state, "", cleanURL);
+    return {vehicle, map};
+  });
+  const [initialVehicle, setInitialVehicle] = useState(initialSelection.vehicle);
+  const [initialMap] = useState(initialSelection.map);
+  const [engineRequested, setEngineRequested] = useState(initialMap === "test");
+  const [launchRequested, setLaunchRequested] = useState(initialMap === "test");
+  const [previewRoof, setPreviewRoof] = useState<Snapshot["roof"]>();
+  const previewRoofRef = useRef<Snapshot["roof"]>(undefined);
+  const pendingStart = useRef(false), garageRef = useRef(false), settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const engineReady = !!state && state.phase !== "loading" && state.phase !== "error";
+  const roof = engineReady ? state?.roof : previewRoof;
   const touchMode = touchControlsEnabled(
     settings.controls,
     useTouchCapability(),
@@ -130,41 +152,92 @@ export default function App() {
     secretClicks.current.last = now;
     if (secretClicks.current.count >= 5) {
       secretClicks.current.count = 0;
-      game.current?.enterTestGround();
+      location.assign(mapURL(location.href, "test"));
     }
   };
   useEffect(() => {
-    try {
-      game.current = new Game(host.current!, settings, setState, setSettings);
-    } catch (e) {
-      setEngineError(e instanceof Error ? e.message : String(e));
-    }
+    if (initialMap === "test" || engineReady) return;
+    let cancelled = false;
+    const prepareRace = () => { if (!cancelled) setEngineRequested(true); };
+    // Paint the complete interface first, then the real 3D vehicle. Only after
+    // the preview is visible do race assets begin their silent background load.
+    void import("../game/Showroom").then(async ({ Showroom }) => {
+      if (cancelled) return;
+      const preview = new Showroom(showroomHost.current!, settingsRef.current.quality, (value) => {
+        if (!cancelled) { previewRoofRef.current = value; setPreviewRoof(value); }
+      });
+      showroom.current = preview;
+      await preview.load(initialVehicle);
+      prepareRace();
+    }).catch((e: unknown) => {
+      if (!cancelled) { console.warn("Vehicle preview unavailable", e); prepareRace(); }
+    });
+    return () => { cancelled = true; showroom.current?.dispose(); showroom.current = null; };
+  }, [initialVehicle, initialMap, engineReady]);
+  useEffect(() => {
+    if (!engineRequested) return;
+    let cancelled = false;
+    // The interface stays usable while the circuit and simulator prepare.
+    void import("../game/Game").then(({ Game }) => {
+      if (cancelled) return;
+      game.current = new Game(host.current!, settingsRef.current, (next) => {
+        if (cancelled) return;
+        setState(next);
+        if (next.phase === "menu" && pendingStart.current) {
+          pendingStart.current = false;
+          void game.current?.start().then(() => {
+            if (!cancelled) setLaunchRequested(false);
+          });
+        }
+      }, setSettings, () => previewRoofRef.current);
+      game.current.showcase = garageRef.current;
+    }).catch((e: unknown) => {
+      if (!cancelled) setEngineError(e instanceof Error ? e.message : String(e));
+    });
     return () => {
+      cancelled = true;
       game.current?.dispose();
+      game.current = null;
     };
-  }, []);
+  }, [engineRequested]);
   useEffect(() => {
     if (state?.debugOpen) setSettingsOpen(false);
   }, [state?.debugOpen]);
-  const phase = state?.phase || "loading";
-  const training = state?.mapId === "test";
-  const vehicle = VEHICLES[state?.vehicleId ?? "sparrow"];
+  useEffect(() => releasePrimedAudio, []);
+  const error = launchRequested ? (engineError || state?.error) : undefined;
+  const loading = !state || state.phase === "loading" || state.phase === "error";
+  const phase = error ? "error" : loading ? (launchRequested ? "loading" : "menu")
+    : launchRequested && state.phase === "menu" ? "loading" : state.phase;
+  const training = (state?.mapId ?? initialMap) === "test";
+  const vehicle = VEHICLES[state?.vehicleId ?? initialVehicle];
+  const best = state?.best ?? loadBest(vehicle.id);
   const active = ["racing", "countdown", "paused", "finished"].includes(phase);
-  const error = engineError || state?.error;
   const busy = !!state?.vehicleLoading || !!state?.tuningBusy;
   const change = (s: Settings) => {
     setSettings(s);
+    try { localStorage.setItem("cloudcape.settings", JSON.stringify(s)); } catch { /* Private storage. */ }
     game.current?.setSettings(s);
   };
   const start = () => {
     (document.activeElement as HTMLElement)?.blur();
+    if (game.current) void game.current.audio.start().catch(() => {});
+    else primeGameAudio();
     setSettingsOpen(false);
     setGarage(false);
-    void game.current?.start();
+    garageRef.current = false;
+    if (engineReady) void game.current?.start();
+    else {
+      pendingStart.current = true;
+      setLaunchRequested(true);
+      setEngineRequested(true);
+    }
   };
   const menu = () => {
     setSettingsOpen(false);
     setGarage(false);
+    garageRef.current = false;
+    pendingStart.current = false;
+    setLaunchRequested(false);
     game.current?.menu();
   };
   const pause = () => {
@@ -173,10 +246,16 @@ export default function App() {
   };
   const showGarage = (open: boolean) => {
     setGarage(open);
+    garageRef.current = open;
+    if (open) setEngineRequested(true);
     if (game.current) game.current.showcase = open;
   };
   const selectVehicle = (id: VehicleId) => {
-    void game.current?.selectVehicle(id);
+    if (!engineRequested) {
+      setInitialVehicle(id);
+      history.replaceState(history.state, "", vehicleURL(location.href, id));
+      try { localStorage.setItem("cloudcape.vehicle", id); } catch { /* Private storage. */ }
+    } else if (engineReady) void game.current?.selectVehicle(id);
   };
   const showSettings = (tab: SettingsTab = "driving") => {
     game.current?.pause();
@@ -202,19 +281,31 @@ export default function App() {
     window.addEventListener("keydown", exit, true);
     return () => window.removeEventListener("keydown", exit, true);
   }, [garage, settingsOpen]);
+  useEffect(() => {
+    if (engineRequested) return;
+    const key = (event: KeyboardEvent) => {
+      if (settingsOpen || (event.target instanceof Element && event.target.closest("button,input,select,textarea"))) return;
+      if (event.code === "Enter") { event.preventDefault(); start(); }
+      if (event.code === "F2") { event.preventDefault(); location.assign(mapURL(location.href, "test")); }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [engineRequested, settingsOpen]);
   const selection = {
     selected: vehicle.id,
     change: selectVehicle,
     loading: state?.vehicleLoading,
     progress: state?.vehicleLoadProgress,
     error: state?.vehicleSwitchError,
+    disabled: engineRequested && !engineReady,
   };
   const modal =
     settingsOpen || phase === "paused" || phase === "finished" || !!error;
   return (
     <main
-      className={`app phase-${phase} camera-${settings.camera}${touchMode ? " input-touch" : ""}${training ? " map-test" : ""}${garage ? " garage-open" : ""}${state?.debugOpen ? " debug-open" : ""}`}
+      className={`app phase-${phase} camera-${settings.camera}${engineReady ? " engine-ready" : ""}${touchMode ? " input-touch" : ""}${training ? " map-test" : ""}${garage ? " garage-open" : ""}${state?.debugOpen ? " debug-open" : ""}`}
     >
+      <div className="showroom-viewport" ref={showroomHost} aria-label="车辆三维展示" />
       <div
         className="game-viewport"
         ref={host}
@@ -228,7 +319,7 @@ export default function App() {
         className="interface-layer"
         inert={modal && !state?.debugOpen ? true : undefined}
       >
-        {phase !== "loading" && phase !== "error" && !engineError && (
+        {phase !== "loading" && phase !== "error" && !error && (
           <header className="topbar">
             <button
               className="brand"
@@ -257,24 +348,25 @@ export default function App() {
               </span>
             )}
             <div className="top-actions">
-              {vehicle.convertible && state?.roof && (
+              {vehicle.convertible && roof && (
                 <button
-                  className={`roof-toggle${state.roof.status === "opening" || state.roof.status === "closing" ? " moving" : ""}`}
-                  aria-label={`${state.roof.targetOpen ? "关闭" : "开启"}敞篷 O`}
-                  aria-pressed={state.roof.targetOpen}
+                  className={`roof-toggle${roof.status === "opening" || roof.status === "closing" ? " moving" : ""}`}
+                  aria-label={`${roof.targetOpen ? "关闭" : "开启"}敞篷 O`}
+                  aria-pressed={roof.targetOpen}
                   title="敞篷开合 · O"
                   onClick={(e) => {
-                    game.current?.toggleRoof();
+                    if (engineReady) game.current?.toggleRoof();
+                    else showroom.current?.toggleRoof();
                     e.currentTarget.blur();
                   }}
                 >
                   <Icon name="roof" />
                   <span>
-                    {state.roof.status === "opening"
-                      ? `开顶 ${Math.round(state.roof.progress * 100)}%`
-                      : state.roof.status === "closing"
-                        ? `关顶 ${Math.round((1 - state.roof.progress) * 100)}%`
-                        : state.roof.status === "open"
+                    {roof.status === "opening"
+                      ? `开顶 ${Math.round(roof.progress * 100)}%`
+                      : roof.status === "closing"
+                        ? `关顶 ${Math.round((1 - roof.progress) * 100)}%`
+                        : roof.status === "open"
                           ? "敞篷"
                           : "开顶"}
                   </span>
@@ -359,7 +451,7 @@ export default function App() {
           </header>
         )}
         {phase === "menu" && !garage && (
-          <>
+          <div className="menu-layout">
             <section className="main-menu" aria-labelledby="game-title">
               <div className="menu-heading">
                 <p className="edition">环风竞速节</p>
@@ -396,11 +488,11 @@ export default function App() {
                     车库 <Icon name="arrow" size={16} />
                   </span>
                 </button>
-                {state?.best != null && (
+                {best != null && (
                   <div className="best-menu">
                     <Icon name="flag" size={15} />
                     <span>个人最佳</span>
-                    <strong>{formatTime(state.best)}</strong>
+                    <strong>{formatTime(best)}</strong>
                   </div>
                 )}
               </div>
@@ -421,7 +513,7 @@ export default function App() {
                 <Icon name="help" size={16} /> 操作指南
               </button>
             </footer>
-          </>
+          </div>
         )}
         {phase === "menu" && garage && (
           <section className="garage" aria-labelledby="garage-heading">
@@ -435,6 +527,11 @@ export default function App() {
                 {VEHICLE_CLASSES[vehicle.id]}
               </span>
             </div>
+            {engineRequested && !engineReady && (
+              <div className="stage-loading" role="status">
+                正在载入车辆 <span>{Math.round(state?.loaded ?? 0)}%</span>
+              </div>
+            )}
             <VehiclePicker {...selection} />
             <dl className="vehicle-specs">
               <div>
@@ -462,7 +559,7 @@ export default function App() {
                 </dd>
               </div>
             </dl>
-            <button className="primary" onClick={start} disabled={busy}>
+            <button className="primary" onClick={start} disabled={busy || !engineReady}>
               驾驶{vehicle.name} <Icon name="arrow" />
             </button>
           </section>
@@ -604,14 +701,14 @@ export default function App() {
         />
       )}
       {training && state && phase !== "loading" && phase !== "error" && (
-        <DebugPanel
+        <Suspense fallback={null}><DebugPanel
           state={state}
           close={() => game.current?.setDebugOpen(false)}
           pause={pause}
           apply={async (tuning) => {
             await game.current?.applyTuning(tuning);
           }}
-        />
+        /></Suspense>
       )}
     </main>
   );
@@ -623,6 +720,7 @@ type Selection = {
   loading?: VehicleId | null;
   progress?: number;
   error?: string;
+  disabled?: boolean;
 };
 function VehiclePicker({
   selected,
@@ -630,6 +728,7 @@ function VehiclePicker({
   loading,
   progress,
   error,
+  disabled,
 }: Selection) {
   const buttons = useRef<Partial<Record<VehicleId, HTMLButtonElement | null>>>(
     {},
@@ -653,6 +752,7 @@ function VehiclePicker({
             aria-label={`选择${vehicle.name}`}
             aria-pressed={selected === vehicle.id}
             aria-busy={loading === vehicle.id}
+            disabled={disabled}
             className={`${selected === vehicle.id ? "selected" : ""}${loading === vehicle.id ? " pending" : ""}`}
             onClick={() => change(vehicle.id)}
           >
@@ -767,6 +867,7 @@ function RaceHud({
 }) {
   return (
     <>
+      <div className="race-instruments">
       <section
         className={`timing${training ? " test-session" : ""}`}
         aria-label={training ? "自由试驾" : "比赛计时"}
@@ -849,6 +950,7 @@ function RaceHud({
             <i>AUTO</i>
           </div>
         </div>
+      </div>
       </div>
       {state.driftAngle > 8 && phaseDriving(state) && (
         <div

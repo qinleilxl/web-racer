@@ -201,8 +201,8 @@ test("vehicle swaps commit in the same world/canvas, reset the new session and u
   assert.equal(stored.get("cloudcape.vehicle"), "suv");
   assert.equal(urls.length, 1);
   const url = new URL(urls[0]);
-  assert.equal(url.searchParams.get("car"), "suv");
-  assert.equal(url.searchParams.get("map"), "test");
+  assert.equal(url.searchParams.get("car"), null);
+  assert.equal(url.searchParams.get("map"), null);
   assert.equal(url.searchParams.get("extra"), "1");
   assert.equal(url.hash, "#play");
 });

@@ -1,26 +1,21 @@
-/* Translucent, multi-touch driving controls with reserved instrument space. */
+/* Thumb zones share the safe-area variables defined by the page layout. */
 .app.input-touch {
-  height: 100svh;
-  height: 100dvh;
-  min-height: 0;
+  --touch-key: clamp(54px, 7.8vw, 72px);
+  --steer-key: clamp(60px, 8.5vw, 80px);
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
-  --touch-zone: calc(var(--touch-key) * 1.85 + 64px);
-  --touch-key: clamp(58px, 8vw, 76px);
-  --steer-key: clamp(64px, 9vw, 84px);
 }
-.input-touch .game-viewport {
-  touch-action: none;
-}
+.input-touch .game-viewport { touch-action: none; }
 .input-touch .touch-controls {
   display: flex;
   position: absolute;
-  left: max(16px, calc(env(safe-area-inset-left) + 12px));
-  right: max(16px, calc(env(safe-area-inset-right) + 12px));
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  left: var(--edge-left);
+  right: var(--edge-right);
+  bottom: var(--edge-bottom);
   justify-content: space-between;
   align-items: flex-end;
+  gap: 16px;
   pointer-events: none;
   z-index: 6;
 }
@@ -148,222 +143,18 @@
   opacity: 0.75;
 }
 
-.input-touch .race-controls {
-  display: none;
+
+.input-touch .race-controls, .input-touch .fullscreen-button { display: none; }
+.touch-direction, .touch-pedal-group { pointer-events: none; flex-shrink: 0; }
+@media (max-height: 600px) and (orientation: landscape) {
+  .app.input-touch { --touch-key: 54px; --steer-key: 60px; }
+  .touch-tools { margin-bottom: 10px; }
+  .touch-tools button { height: 36px; }
+  .auto-throttle-badge { bottom: calc(100% + 8px); }
 }
-.input-touch .topbar {
-  top: max(14px, calc(env(safe-area-inset-top) + 8px));
-  left: max(18px, calc(env(safe-area-inset-left) + 12px));
-  right: max(18px, calc(env(safe-area-inset-right) + 12px));
-}
-.input-touch .fullscreen-button {
-  display: none;
-}
-.input-touch .hud-bottom {
-  inset: auto max(18px, calc(env(safe-area-inset-right) + 12px))
-    calc(var(--touch-zone) + env(safe-area-inset-bottom))
-    max(18px, calc(env(safe-area-inset-left) + 12px));
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0;
-  filter: none;
-}
-.input-touch .wind-meter {
-  width: 148px;
-  padding: 10px 12px;
-  margin: 0;
-}
-.input-touch .wind-meter > div:first-child {
-  font-size: 9px;
-  gap: 6px;
-}
-.input-touch .wind-meter strong {
-  font-size: 17px;
-}
-.input-touch .energy-track {
-  margin-top: 9px;
-}
-.input-touch .speedometer {
-  width: 154px;
-  height: 128px;
-  transform: none;
-}
-.input-touch .speedometer > svg {
-  width: 144px;
-  height: 96px;
-  left: 5px;
-}
-.input-touch .speed-readout {
-  top: 25px;
-}
-.input-touch .speed-readout strong {
-  font-size: 49px;
-}
-.input-touch .speed-readout > span {
-  font-size: 8px;
-  margin-top: 3px;
-}
-.input-touch .gear {
-  gap: 6px;
-}
-.input-touch .gear > b {
-  font-size: 17px;
-  min-width: 24px;
-}
-.input-touch .drift-indicator {
-  bottom: calc(var(--touch-zone) + 145px + env(safe-area-inset-bottom));
-}
-.input-touch .touch-direction,
-.input-touch .touch-pedal-group {
-  pointer-events: none;
-}
-@media (max-width: 380px) {
-  .app.input-touch {
-    --steer-key: 60px;
-    --touch-key: 56px;
-  }
-  .input-touch .touch-steering {
-    gap: 7px;
-  }
-  .input-touch .touch-pedals {
-    gap: 8px;
-  }
-  .input-touch .timing {
-    width: 166px;
-    left: 18px;
-  }
-  .input-touch .minimap {
-    width: 103px;
-    right: 18px;
-  }
-  .input-touch .wind-meter {
-    width: 136px;
-  }
-  .input-touch .speedometer {
-    width: 140px;
-  }
-}
-@media (max-height: 500px) and (orientation: landscape) {
-  .app.input-touch {
-    --touch-key: 57px;
-    --steer-key: 66px;
-    --touch-zone: 153px;
-  }
-  .input-touch .touch-tools {
-    margin-bottom: 12px;
-  }
-  .input-touch .topbar {
-    top: max(10px, env(safe-area-inset-top));
-  }
-  .input-touch .top-actions .icon-button {
-    width: 36px;
-    height: 36px;
-  }
-  .input-touch .timing {
-    top: 66px;
-    left: max(20px, calc(env(safe-area-inset-left) + 12px));
-    width: 182px;
-    padding: 12px 14px;
-  }
-  .input-touch .time-current {
-    font-size: 25px;
-    margin: 6px 0;
-  }
-  .input-touch .time-best {
-    font-size: 8px;
-  }
-  .input-touch .race-progress {
-    margin-top: 9px;
-  }
-  .input-touch .checkpoint-label {
-    margin-top: 7px;
-  }
-  .input-touch .minimap {
-    display: none;
-  }
-  .input-touch .hud-bottom {
-    inset: 66px max(18px, calc(env(safe-area-inset-right) + 12px)) auto auto;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-end;
-    gap: 15px;
-  }
-  .input-touch .wind-meter {
-    width: 128px;
-    margin-top: 4px;
-  }
-  .input-touch .wind-meter svg {
-    display: none;
-  }
-  .input-touch .speedometer {
-    width: 118px;
-    height: 100px;
-  }
-  .input-touch .speedometer > svg {
-    width: 112px;
-    height: 76px;
-    left: 3px;
-  }
-  .input-touch .speed-readout {
-    top: 21px;
-  }
-  .input-touch .speed-readout strong {
-    font-size: 39px;
-  }
-  .input-touch .gear > span,
-  .input-touch .gear > i {
-    display: none;
-  }
-  .input-touch .gear > b {
-    font-size: 14px;
-  }
-  .input-touch .notice {
-    top: 35%;
-  }
-  .input-touch .driving-warning {
-    top: 45%;
-  }
-  .input-touch .drift-indicator {
-    bottom: 160px;
-  }
+@media (max-width: 360px) {
+  .touch-steering, .touch-pedals { gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .touch-controls .touch-key {
-    transition: none;
-  }
-}
-@media (max-width: 700px) and (orientation: portrait) {
-  .input-touch .hud-bottom {
-    inset: 243px max(18px, calc(env(safe-area-inset-right) + 12px)) auto
-      max(18px, calc(env(safe-area-inset-left) + 12px));
-    align-items: flex-start;
-  }
-  .input-touch .wind-meter {
-    width: 139px;
-    margin-top: 8px;
-  }
-  .input-touch .speedometer {
-    width: 135px;
-    height: 114px;
-  }
-  .input-touch .speedometer > svg {
-    width: 127px;
-    height: 86px;
-    left: 4px;
-  }
-  .input-touch .speed-readout {
-    top: 23px;
-  }
-  .input-touch .speed-readout strong {
-    font-size: 45px;
-  }
-  .input-touch .gear > b {
-    font-size: 15px;
-    min-width: 22px;
-  }
-  .input-touch.map-test .hud-bottom {
-    top: 180px;
-  }
+  .touch-controls .touch-key { transition: none; }
 }

@@ -144,6 +144,7 @@ export class Game {
     settings: Settings,
     private publish: (state: Snapshot) => void,
     private settingsChanged: (settings: Settings) => void,
+    private initialRoof?: () => Snapshot["roof"],
   ) {
     this.settings = settings;
     this.renderer = new T.WebGLRenderer({
@@ -365,6 +366,12 @@ export class Game {
       // Include hidden exhaust and speed effects before the player can accelerate.
       await this.renderer.compileAsync(this.scene, this.camera);
       if (this.disposed) return;
+      const initialRoof = this.initialRoof?.();
+      if (this.roof && initialRoof) {
+        this.roof.progress = initialRoof.progress;
+        this.roof.targetOpen = initialRoof.targetOpen;
+        this.roof.update(0);
+      }
       this.state.loaded = 100;
       this.state.phase = training ? "racing" : "menu";
       this.state.energy = training ? 100 : 35;

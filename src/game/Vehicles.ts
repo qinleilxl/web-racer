@@ -355,6 +355,8 @@ function isVehicleId(id: string | null): id is VehicleId {
 
 export function vehicleURL(href: string, id: VehicleId) {
   const url = new URL(href);
-  url.searchParams.set("car", id);
+  try { localStorage.setItem("cloudcape.vehicle", id); } catch { /* Private storage. */ }
+  url.searchParams.delete("car");
+  url.searchParams.delete("map");
   return url.href;
 }

@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { primeGameAudio, releasePrimedAudio } from "../src/game/AudioUnlock";
 import assert from "node:assert/strict";
 import {
   CAR_AUDIO,
@@ -239,6 +240,39 @@ test("hot vehicle changes reuse the unlocked audio context and stop the previous
   audio.dispose();
   assert.equal(closed, 1);
   assert.ok(f.nodes.filter((n) => n.started).every((n) => n.stopped));
+});
+
+test("the first tap unlocks audio before the deferred game engine has loaded", async (t) => {
+  const old = Object.getOwnPropertyDescriptor(globalThis, "AudioContext");
+  const f = fixture();
+  let created = 0, resumed = 0, closed = 0;
+  Object.assign(f.context, {
+    state: "running",
+    resume: async () => { resumed++; },
+    close: async () => { closed++; },
+  });
+  Object.defineProperty(globalThis, "AudioContext", {
+    configurable: true,
+    value: function () { created++; return f.context; },
+  });
+  t.after(() => {
+    releasePrimedAudio();
+    if (old) Object.defineProperty(globalThis, "AudioContext", old);
+    else Reflect.deleteProperty(globalThis, "AudioContext");
+  });
+  primeGameAudio();
+  primeGameAudio();
+  assert.equal(created, 1);
+  assert.equal(resumed, 2);
+  assert.equal(f.nodes.filter((n) => n.kind !== "destination").length, 0,
+    "landing started the expensive audio graph");
+  const audio = new GameAudio("sparrow");
+  await audio.start();
+  assert.equal(created, 1, "deferred engine lost the gesture-unlocked context");
+  assert.ok(f.nodes.length > 0);
+  audio.dispose();
+  releasePrimedAudio();
+  assert.equal(closed, 1);
 });
 
 test("all real audio graphs use their own spectra, schedule smooth transitions and release every node", () => {

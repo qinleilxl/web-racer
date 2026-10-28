@@ -1,13 +1,8 @@
 import { Vector3 } from "three";
 import { VEHICLES } from "./Vehicles";
 
-export const CAMERA_MODES = ["far", "near", "cockpit"] as const;
-export type CameraMode = (typeof CAMERA_MODES)[number];
-export const CAMERA_LABELS: Record<CameraMode, string> = {
-  far: "远景追尾",
-  near: "近景追尾",
-  cockpit: "车内驾驶位",
-};
+import { CAMERA_MODES, type CameraMode } from "./CameraModes";
+export { CAMERA_MODES, CAMERA_LABELS, type CameraMode } from "./CameraModes";
 export function nextCameraMode(mode: CameraMode): CameraMode {
   return CAMERA_MODES[(CAMERA_MODES.indexOf(mode) + 1) % CAMERA_MODES.length];
 }
