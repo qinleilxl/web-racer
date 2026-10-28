@@ -16,15 +16,10 @@ export const DRIFT = {
   displayExit: (8 * Math.PI) / 180,
 } as const;
 
-/** Smooth, localised keyboard assistance; leave parking and >115 km/h unchanged. */
-export function midSpeedCorneringWeight(speed: number) {
-  const smooth = (value: number) => {
-    const t = Math.max(0, Math.min(1, value));
-    return t * t * (3 - 2 * t);
-  };
-  const kmh = Math.abs(speed) * 3.6;
-  return smooth((kmh - 45) / 25) * (1 - smooth((kmh - 85) / 30));
-}
+const smooth = (value: number) => {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * (3 - 2 * t);
+};
 
 /** More steering reserve as speed rises, without changing the parking lock. */
 export function speedSteeringGain(speed: number) {
@@ -34,9 +29,10 @@ export function speedSteeringGain(speed: number) {
 }
 
 export function roadCorneringWeight(speed: number) {
-  const t = Math.max(0, Math.min(1, (Math.abs(speed) * 3.6 - 85) / 75));
-  const highSpeed = t * t * (3 - 2 * t);
-  return Math.min(1.25, midSpeedCorneringWeight(speed) + highSpeed * 0.85);
+  const kmh = Math.abs(speed) * 3.6;
+  // Keep the 70–80 km/h reserve while the high-speed reserve builds. The old
+  // bell-shaped mid-speed boost faded before its replacement was available.
+  return smooth((kmh - 45) / 25) + 2 * smooth((kmh - 85) / 75);
 }
 
 // Keep a speed-dependent envelope, with useful authority for fast direction changes.
@@ -47,10 +43,11 @@ export function steeringAngleLimit(
   wheelbase: number = VEHICLE.wheelbase,
   normalCornering = true,
 ) {
+  const reserve = normalCornering ? roadCorneringWeight(speed) : 0;
   const response =
     drift === 0
       ? speedSteeringGain(speed) *
-        (1 + (normalCornering ? midSpeedCorneringWeight(speed) * 0.25 : 0))
+        (1 + reserve * 0.25 + Math.max(0, reserve - 1) * 0.45)
       : 1;
   return Math.min(
     VEHICLE.maxSteer,

@@ -61,6 +61,8 @@ export class Physics {
   private tireCaps = Array.from({ length: 4 }, () => ({
     longitudinal: 0,
     lateral: 0,
+    normalLoad: 0,
+    loadScale: 1,
   }));
   private tcsReduction = 0;
   private absReduction = 0;
@@ -251,7 +253,9 @@ export class Physics {
     this.system.SetContactListener(this.contactListener);
   }
   get touchingWall() {
-    return this.wallContactTime > 0;
+    // A collision notification can remain recent after a clean rebound. Do not
+    // let its old surface keep controlling steering for another 220 ms.
+    return this.wallContactTime > 0 && this.wallGap < 1 / 30;
   }
   get wallScrape() {
     return Math.max(0, Math.min(1, (this.scrapeTime - 0.12) / 0.8));
@@ -559,6 +563,8 @@ export class Physics {
       this.tireCaps[wheel] = {
         longitudinal: budget.totalLongitudinalCapacity,
         lateral: budget.totalLateralCapacity,
+        normalLoad: budget.normalLoad,
+        loadScale: budget.loadScale,
       };
       const data = this.telemetry.wheels[wheel];
       data.load = budget.normalLoad;
@@ -823,7 +829,8 @@ export class Physics {
       assists &&
       (!this.recoveryControl || controlledDrift) &&
       (!this.touchingWall || this.wallRelease)
-        ? roadCorneringWeight(this.speed) * (controlledDrift ? 1.35 : 1)
+        ? roadCorneringWeight(this.speed) *
+          (controlledDrift ? 1.35 : Math.min(1, Math.abs(input.steer) * 2))
         : 0;
     this.corneringGrip +=
       (corneringTarget - this.corneringGrip) * (1 - Math.exp(-dt * 8));
@@ -853,20 +860,6 @@ export class Physics {
       -Math.max(-VEHICLE.maxSteer, Math.min(VEHICLE.maxSteer, this.slipAngle)) /
       VEHICLE.maxSteer;
     target += (counterTarget - target) * counterWeight;
-    if (
-      this.wallRelease &&
-      this.forwardSpeed > 3 &&
-      input.steer * this.slipAngle < -0.015
-    ) {
-      // An impact can leave travel along the wall while the nose points into it.
-      // Clear that slip at the contact patch before adding the driver's road
-      // curvature, as in an ordinary countersteer, rather than limiting to the
-      // tiny high-speed road angle and keeping both front tyres aimed at the wall.
-      target +=
-        (Math.max(-0.3, Math.min(0.3, -this.slipAngle * 0.95)) /
-          VEHICLE.maxSteer) *
-        Math.min(1, Math.abs(input.steer) * 2);
-    }
     // During an explicit reversal the front contact patches must first clear
     // the existing lateral slip. A tiny high-speed road angle alone cannot do
     // that, even though the visible wheels have already crossed the centre.
@@ -876,10 +869,13 @@ export class Physics {
       !this.recoveryControl &&
       !this.touchingWall &&
       !this.wallRelease;
+    // Keep reversal authority through zero yaw. Residual impact slip can still
+    // oppose the new turn there; release only when both chassis and travel turn.
     if (
       !canReverse ||
       Math.sign(input.steer) !== this.reversalDirection ||
-      input.steer * this.slipAngle >= -0.015
+      (input.steer * this.body.GetAngularVelocity().GetY() < -0.12 &&
+        input.steer * this.travelYaw < -0.06)
     )
       this.reversalDirection = 0;
     if (
@@ -888,7 +884,18 @@ export class Physics {
     )
       this.reversalDirection = Math.sign(input.steer);
     const reversingTurn = this.reversalDirection !== 0;
-    if (reversingTurn && input.steer * this.slipAngle < -0.015)
+    const clearingImpactSlip =
+      this.wallContactTime > 0 &&
+      !this.touchingWall &&
+      !this.driftControl.active &&
+      !this.recoveryControl;
+    if (
+      (this.wallRelease || clearingImpactSlip || reversingTurn) &&
+      this.forwardSpeed > 3 &&
+      input.steer * this.slipAngle < -0.015
+    )
+      // After an impact/reversal, clear the old contact-patch slip before adding
+      // the new road curvature. This follows travel, never the former wall normal.
       target +=
         (Math.max(-0.3, Math.min(0.3, -this.slipAngle * 0.95)) /
           VEHICLE.maxSteer) *
@@ -1101,9 +1108,10 @@ export class Physics {
       );
       let yawTorque =
         -yaw * (assists ? 600 : 120) * (1 - this.driftBlend * 0.8);
-      if (reversingTurn && assists) {
+      if ((reversingTurn || clearingImpactSlip) && assists) {
         const yawBudget =
-          (this.tuning.steeringGrip * 1.05) / Math.max(8, this.forwardSpeed);
+          (this.tuning.steeringGrip * (1.05 + this.corneringGrip * 0.25)) /
+          Math.max(8, this.forwardSpeed);
         const desiredYaw = Math.max(
           -yawBudget,
           Math.min(

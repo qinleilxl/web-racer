@@ -135,20 +135,23 @@ test("holding steering through an impact retains front tyre authority and turns 
             for (let i = 0; i < 192; i++) {
               p.step(PHYSICS_STEP, input, true, false);
               const native = p as unknown as {
-                tireCaps: { lateral: number }[];
+                tireCaps: { lateral: number; normalLoad: number; loadScale: number }[];
                 surfaceGrip: number[];
                 wallPinned: boolean;
               };
               if (!native.wallPinned)
                 for (const wheel of [0, 1]) {
-                  const load = p.telemetry.wheels[wheel].load;
+                  // Compare capacity with the same callback load that produced
+                  // it. Post-solve suspension telemetry can differ during an
+                  // impact; real tyre load sensitivity is not a wall grip cut.
+                  const cap = native.tireCaps[wheel], load = cap.normalLoad;
                   if (load > 100) {
                     const available =
-                      native.tireCaps[wheel].lateral /
+                      cap.lateral /
                       (load *
                         PHYSICS_STEP *
                         p.tuning.frontGrip *
-                        native.surfaceGrip[wheel]);
+                        native.surfaceGrip[wheel] * cap.loadScale);
                     leastFrontGrip = Math.min(leastFrontGrip, available);
                     assert.ok(
                       available > 0.8,
