@@ -295,7 +295,7 @@ export default function App() {
       if (event.code !== "KeyO" || (event.target instanceof Element && event.target.closest("button,input,select,textarea"))) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      showroom.current?.toggleRoof();
+      if (!event.repeat) showroom.current?.toggleRoof();
     };
     window.addEventListener("keydown", key, true);
     return () => window.removeEventListener("keydown", key, true);
