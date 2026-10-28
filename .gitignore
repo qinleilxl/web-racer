@@ -1,6 +1,12 @@
 node_modules/
 dist/
+dist-edgeone/
 *.local
 .DS_Store
 *.tsbuildinfo
 .wrangler/
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/
+.tef_dist/

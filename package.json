@@ -10,7 +10,9 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "models:showroom": "node scripts/build-showroom.mjs",
     "models:home-coast": "node --import tsx scripts/build-home-coast.mjs",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name web-racer --branch main"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name web-racer --branch main",
+    "prepare:edgeone": "node scripts/prepare-edgeone.mjs",
+    "deploy:edgeone": "npm run build && npm run prepare:edgeone && npx --yes edgeone@1.6.47 makers deploy dist-edgeone --name cloudcape-rally --site china --area overseas --env production --skip-ai-gateway-sync --json"
   },
   "dependencies": {
     "jolt-physics": "^0.35.0",

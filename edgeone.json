@@ -1,0 +1,119 @@
+{
+  "headers": [
+    {
+      "source": "/*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.webp",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.wasm",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.glb",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "model/gltf-binary"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.gltf",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "model/gltf+json"
+        }
+      ]
+    },
+    {
+      "source": "/assets/*.bin",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        }
+      ]
+    }
+  ],
+  "caches": [
+    {
+      "source": "/",
+      "cacheTtl": 0
+    },
+    {
+      "source": "/index.html",
+      "cacheTtl": 0
+    },
+    {
+      "source": "/assets/*",
+      "cacheTtl": 3600
+    },
+    {
+      "source": "/assets/*.js",
+      "cacheTtl": 31536000
+    },
+    {
+      "source": "/assets/*.css",
+      "cacheTtl": 31536000
+    },
+    {
+      "source": "/assets/*.webp",
+      "cacheTtl": 31536000
+    }
+  ]
+}

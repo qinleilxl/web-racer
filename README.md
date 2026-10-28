@@ -22,7 +22,21 @@ npm run dev
 
 打开 http://127.0.0.1:5190，选择「开始竞速」。建议使用开启硬件加速的桌面 Chrome、Edge 或 Safari。
 
-## 发布到 Cloudflare Pages
+## 发布到腾讯云 EdgeOne
+
+```bash
+npm ci
+npx --yes edgeone@1.6.47 login --site china --local
+npm run deploy:edgeone
+```
+
+腾讯云项目为 `cloudcape-rally`，加速区域使用 `overseas`（全球可用区，不含中国大陆），可接入未备案的自定义域名。本机已有 CLI 授权时直接运行发布命令即可；凭据和本地关联信息保存在已忽略的 `.edgeone/`，不进入仓库。
+
+发布命令先构建，再生成 `dist-edgeone/`：移除 Cloudflare 专用的 `_headers`，使用 `edgeone.json` 配置入口重新验证、模型一小时缓存、带哈希脚本及样式长期缓存，以及 GLB / glTF / WASM 的 MIME 类型。车辆和赛道文件保持原构建内容。
+
+`racer.qinleilxl.com` 的接入 CNAME 为 `racer.qinleilxl.com.pages.dnsoe5.com`，在 DNS 服务商中使用“仅 DNS”。`_dnsauth.racer` 的证书委派记录需保留，以便平台自动续期证书。
+
+## Cloudflare Pages 备用部署
 
 ```bash
 npm ci
