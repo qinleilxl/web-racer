@@ -15,7 +15,8 @@
 }
 .showroom-viewport canvas { display: block; }
 .game-viewport { opacity: 0; }
-.engine-ready .game-viewport { opacity: 1; }
+.game-visible .game-viewport { opacity: 1; }
+.game-visible .showroom-viewport { visibility: hidden; }
 .topbar {
   inset: var(--edge-top) var(--edge-right) auto var(--edge-left);
   height: var(--header-height);

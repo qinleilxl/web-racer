@@ -19,6 +19,7 @@ export class Showroom {
   private observer: ResizeObserver;
   private animation = 0;
   private disposed = false;
+  private active = true;
   private modelSize = 4.4;
   private modelHeight = 1.6;
   private lastTime = 0;
@@ -36,6 +37,7 @@ export class Showroom {
     this.renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, quality === "high" ? 1.5 : 1.25));
     this.renderer.domElement.dataset.previewReady = "false";
+    this.renderer.domElement.dataset.previewInstance = T.MathUtils.generateUUID();
     host.appendChild(this.renderer.domElement);
     this.scene.background = new T.Color("#aec9bf");
     this.scene.fog = new T.Fog("#aec9bf", 48, 180);
@@ -97,6 +99,20 @@ export class Showroom {
     this.publishRoof();
   }
   toggleRoof() { this.roof?.toggle(); this.publishRoof(); }
+  restoreRoof(state: Snapshot["roof"]) {
+    if (!this.roof || !state) return;
+    this.roof.progress = state.progress;
+    this.roof.targetOpen = state.targetOpen;
+    this.roof.update(0);
+    this.publishRoof();
+    this.renderer.render(this.scene, this.camera);
+  }
+  setActive(active: boolean) {
+    if (this.active === active) return;
+    this.active = active;
+    this.renderer.domElement.dataset.previewActive = String(active);
+    if (active) this.resize();
+  }
   private publishRoof() {
     const roof = this.roof ? {progress:this.roof.progress,targetOpen:this.roof.targetOpen,status:this.roof.status} : undefined;
     const signature = roof ? `${roof.status}:${Math.round(roof.progress*100)}` : "none";
@@ -117,6 +133,7 @@ export class Showroom {
   private frame = (time: number) => {
     if (this.disposed) return;
     this.animation = requestAnimationFrame(this.frame);
+    if (!this.active) { this.lastTime = time; return; }
     if (time-this.lastTime < 32) return;
     const dt = Math.min(.1,(time-this.lastTime)/1000); this.lastTime=time;
     this.roof?.update(dt); this.publishRoof();

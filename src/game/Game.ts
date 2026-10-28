@@ -111,6 +111,23 @@ export class Game {
   audio = new GameAudio(this.vehicle.id);
   settings: Settings;
   showcase = false;
+  private presentationVisible = true;
+  setPresentationVisible(visible: boolean) {
+    this.presentationVisible = visible;
+    if (visible && this.state.loaded === 100) this.renderPresentation();
+  }
+  private renderPresentation() {
+    if (!this.renderer) return;
+    this.updateCamera(1);
+    this.renderer.render(this.scene, this.camera);
+  }
+  private restoreHomeRoof() {
+    const state = this.initialRoof?.();
+    if (!this.roof || !state) return;
+    this.roof.progress = state.progress;
+    this.roof.targetOpen = state.targetOpen;
+    this.roof.update(0);
+  }
   private car = new T.Group();
   private model?: T.Group;
   private rig?: CarRig;
@@ -366,12 +383,7 @@ export class Game {
       // Include hidden exhaust and speed effects before the player can accelerate.
       await this.renderer.compileAsync(this.scene, this.camera);
       if (this.disposed) return;
-      const initialRoof = this.initialRoof?.();
-      if (this.roof && initialRoof) {
-        this.roof.progress = initialRoof.progress;
-        this.roof.targetOpen = initialRoof.targetOpen;
-        this.roof.update(0);
-      }
+      this.restoreHomeRoof();
       this.state.loaded = 100;
       this.state.phase = training ? "racing" : "menu";
       this.state.energy = training ? 100 : 35;
@@ -763,6 +775,8 @@ export class Game {
     this.cameraReady = false;
     this.accumulator = 0;
     this.syncCar();
+    this.restoreHomeRoof();
+    this.renderPresentation();
     this.emit();
   }
   menu() {
@@ -1189,6 +1203,11 @@ export class Game {
   }
   private frame = (timestamp: number) => {
     if (this.disposed) return;
+    if (!this.presentationVisible && this.state.phase === "menu") {
+      this.last = timestamp;
+      this.animation = requestAnimationFrame(this.frame);
+      return;
+    }
     const rawDt = (timestamp - (this.last || timestamp)) / 1000;
     const timing = frameTime(rawDt);
     const dt = timing.visual;

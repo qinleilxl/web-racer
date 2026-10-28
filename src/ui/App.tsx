@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { TouchControls, useTouchCapability } from "./TouchControls";
 import { touchControlsEnabled } from "../game/TouchInput";
 import type { Game } from "../game/Game";
@@ -6,6 +6,7 @@ import { CAMERA_LABELS, CAMERA_MODES } from "../game/CameraModes";
 import { VEHICLES, vehicleFromSearch, vehicleURL, type VehicleId } from "../game/Vehicles";
 import { mapFromSearch, mapURL } from "../game/MapMode";
 import type { Showroom } from "../game/Showroom";
+import { COAST_OUTLINE } from "./CoastOutline";
 import { primeGameAudio, releasePrimedAudio } from "../game/AudioUnlock";
 import {
   formatTime,
@@ -133,11 +134,16 @@ export default function App() {
   const [engineRequested, setEngineRequested] = useState(initialMap === "test");
   const [launchRequested, setLaunchRequested] = useState(initialMap === "test");
   const [previewRoof, setPreviewRoof] = useState<Snapshot["roof"]>();
+  const [previewFailed, setPreviewFailed] = useState(false);
   const previewRoofRef = useRef<Snapshot["roof"]>(undefined);
   const pendingStart = useRef(false), garageRef = useRef(false), settingsRef = useRef(settings);
   settingsRef.current = settings;
   const engineReady = !!state && state.phase !== "loading" && state.phase !== "error";
-  const roof = engineReady ? state?.roof : previewRoof;
+  const gameVisible = engineReady && (state?.phase !== "menu" || garage || previewFailed);
+  const gameVisibleRef = useRef(gameVisible);
+  gameVisibleRef.current = gameVisible;
+  const displayVehicle = state?.vehicleId ?? initialVehicle;
+  const roof = gameVisible ? state?.roof : previewRoof;
   const touchMode = touchControlsEnabled(
     settings.controls,
     useTouchCapability(),
@@ -156,8 +162,9 @@ export default function App() {
     }
   };
   useEffect(() => {
-    if (initialMap === "test" || engineReady) return;
+    if (initialMap === "test") return;
     let cancelled = false;
+    setPreviewFailed(false);
     const prepareRace = () => { if (!cancelled) setEngineRequested(true); };
     // Paint the complete interface first, then the real 3D vehicle. Only after
     // the preview is visible do race assets begin their silent background load.
@@ -167,13 +174,14 @@ export default function App() {
         if (!cancelled) { previewRoofRef.current = value; setPreviewRoof(value); }
       });
       showroom.current = preview;
-      await preview.load(initialVehicle);
+      preview.setActive(!gameVisibleRef.current);
+      await preview.load(displayVehicle);
       prepareRace();
     }).catch((e: unknown) => {
-      if (!cancelled) { console.warn("Vehicle preview unavailable", e); prepareRace(); }
+      if (!cancelled) { console.warn("Vehicle preview unavailable", e); setPreviewFailed(true); prepareRace(); }
     });
     return () => { cancelled = true; showroom.current?.dispose(); showroom.current = null; };
-  }, [initialVehicle, initialMap, engineReady]);
+  }, [displayVehicle, initialMap]);
   useEffect(() => {
     if (!engineRequested) return;
     let cancelled = false;
@@ -189,8 +197,9 @@ export default function App() {
             if (!cancelled) setLaunchRequested(false);
           });
         }
-      }, setSettings, () => previewRoofRef.current);
+      }, setSettings, () => gameVisibleRef.current ? undefined : previewRoofRef.current);
       game.current.showcase = garageRef.current;
+      game.current.setPresentationVisible(gameVisibleRef.current);
     }).catch((e: unknown) => {
       if (!cancelled) setEngineError(e instanceof Error ? e.message : String(e));
     });
@@ -200,6 +209,11 @@ export default function App() {
       game.current = null;
     };
   }, [engineRequested]);
+  useLayoutEffect(() => {
+    // Resource readiness never chooses the home backdrop. Only navigation does.
+    game.current?.setPresentationVisible(gameVisible);
+    showroom.current?.setActive(!gameVisible);
+  }, [gameVisible, engineReady]);
   useEffect(() => {
     if (state?.debugOpen) setSettingsOpen(false);
   }, [state?.debugOpen]);
@@ -233,6 +247,7 @@ export default function App() {
     }
   };
   const menu = () => {
+    if (gameVisible) showroom.current?.restoreRoof(state?.roof);
     setSettingsOpen(false);
     setGarage(false);
     garageRef.current = false;
@@ -245,6 +260,7 @@ export default function App() {
     game.current?.togglePause();
   };
   const showGarage = (open: boolean) => {
+    if (!open && gameVisible) showroom.current?.restoreRoof(state?.roof);
     setGarage(open);
     garageRef.current = open;
     if (open) setEngineRequested(true);
@@ -269,6 +285,21 @@ export default function App() {
       void document.exitFullscreen().catch(() => {});
     else void document.documentElement.requestFullscreen?.().catch(() => {});
   };
+  const toggleRoof = () => {
+    if (gameVisible) game.current?.toggleRoof();
+    else showroom.current?.toggleRoof();
+  };
+  useEffect(() => {
+    if (gameVisible || settingsOpen) return;
+    const key = (event: KeyboardEvent) => {
+      if (event.code !== "KeyO" || (event.target instanceof Element && event.target.closest("button,input,select,textarea"))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showroom.current?.toggleRoof();
+    };
+    window.addEventListener("keydown", key, true);
+    return () => window.removeEventListener("keydown", key, true);
+  }, [gameVisible, settingsOpen]);
   useEffect(() => {
     if (!garage || settingsOpen) return;
     const exit = (event: KeyboardEvent) => {
@@ -303,7 +334,7 @@ export default function App() {
     settingsOpen || phase === "paused" || phase === "finished" || !!error;
   return (
     <main
-      className={`app phase-${phase} camera-${settings.camera}${engineReady ? " engine-ready" : ""}${touchMode ? " input-touch" : ""}${training ? " map-test" : ""}${garage ? " garage-open" : ""}${state?.debugOpen ? " debug-open" : ""}`}
+      className={`app phase-${phase} camera-${settings.camera}${engineReady ? " engine-ready" : ""}${gameVisible ? " game-visible" : ""}${touchMode ? " input-touch" : ""}${training ? " map-test" : ""}${garage ? " garage-open" : ""}${state?.debugOpen ? " debug-open" : ""}`}
     >
       <div className="showroom-viewport" ref={showroomHost} aria-label="车辆三维展示" />
       <div
@@ -355,8 +386,7 @@ export default function App() {
                   aria-pressed={roof.targetOpen}
                   title="敞篷开合 · O"
                   onClick={(e) => {
-                    if (engineReady) game.current?.toggleRoof();
-                    else showroom.current?.toggleRoof();
+                    toggleRoof();
                     e.currentTarget.blur();
                   }}
                 >
@@ -497,7 +527,7 @@ export default function App() {
                 )}
               </div>
             </section>
-            <RouteCard game={game.current} training={training} />
+            <RouteCard training={training} />
             <footer className="menu-footer">
               <button
                 className="copyright"
@@ -803,18 +833,15 @@ function routeShape(game: Game | null, size = 170) {
   return { map, line: line + " " + line.split(" ")[0] };
 }
 function RouteCard({
-  game,
   training,
 }: {
-  game: Game | null;
   training: boolean;
 }) {
-  const shape = routeShape(game);
   return (
     <aside className="route-card" aria-label="当前赛道">
-      {shape && !training && (
+      {!training && (
         <svg viewBox="0 0 220 215" aria-hidden="true">
-          <polyline points={shape.line} />
+          <polyline points={COAST_OUTLINE} />
         </svg>
       )}
       <div>
