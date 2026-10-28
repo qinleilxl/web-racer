@@ -1,6 +1,6 @@
 {
   "name": "yunjia-coastal-circuit",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --import tsx --test tests/*.test.ts",
     "models:showroom": "node scripts/build-showroom.mjs",
+    "models:home-coast": "node --import tsx scripts/build-home-coast.mjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name web-racer --branch main"
   },
   "dependencies": {

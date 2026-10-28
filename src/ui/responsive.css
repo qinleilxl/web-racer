@@ -13,7 +13,11 @@
   width: 100%;
   height: 100%;
 }
-.showroom-viewport canvas { display: block; }
+.showroom-viewport canvas { display: block; opacity: 0; transition: opacity .4s ease; }
+.showroom-viewport canvas[data-preview-ready="true"] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .showroom-viewport canvas { transition: none; }
+}
 .game-viewport { opacity: 0; }
 .game-visible .game-viewport { opacity: 1; }
 .game-visible .showroom-viewport { visibility: hidden; }
