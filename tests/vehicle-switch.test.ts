@@ -1,3 +1,4 @@
+import { t as localize } from "../src/i18n";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -217,7 +218,7 @@ test("failed replacements retain the old working car, physics, sound and selecte
   await f.game.selectVehicle("formula");
   assert.equal(f.game.vehicle.id, "scarlet");
   assert.equal(f.game.physics, f.old.physics);
-  assert.ok(f.game.state.vehicleSwitchError?.includes("仍使用赤风号"));
+  assert.ok(f.game.state.vehicleSwitchError?.includes(localize(VEHICLES.scarlet.name)));
   assert.equal(f.game.state.phase, "paused");
   assert.equal(f.game.state.tuningBusy, false);
   assert.deepEqual(f.sounds, []);

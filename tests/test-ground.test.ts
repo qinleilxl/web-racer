@@ -1,3 +1,4 @@
+import { t as localize } from "../src/i18n";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Quaternion, Vector3 } from "three";
@@ -162,7 +163,9 @@ test("debug access is limited to the proving ground and clean map navigation ret
   });
   fake.setDebugOpen(true);
   assert.equal(fake.state.debugOpen, false);
-  await assert.rejects(fake.applyTuning(DEFAULT_TUNING), /试车场/);
+  await assert.rejects(fake.applyTuning(DEFAULT_TUNING), {
+    message: localize("请在试车场中应用调校"),
+  });
   Object.assign(fake, { mapId: "test" });
   fake.setDebugOpen(true);
   assert.equal(fake.state.debugOpen, true);
