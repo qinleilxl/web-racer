@@ -28,6 +28,21 @@ npm run dev
 
 打开 http://127.0.0.1:5190，选择「开始竞速」。建议使用开启硬件加速的桌面 Chrome、Edge 或 Safari。
 
+## 发布到 GitHub Pages
+
+GitHub Pages 地址为 https://qinleilxl.github.io/web-racer/ 。`.github/workflows/pages.yml` 在推送到 `main` 或手动触发时，使用 Node.js 22 安装依赖、运行测试、构建并发布。
+
+仓库 Settings → Pages 的 Source 选择 **GitHub Actions**，无需额外部署密钥。构建命令为 `npm run build:pages`，产物位于 `dist-pages/`，Vite base 为 `/web-racer/`；车型、赛道、展示模型和路线数据均使用同一个 base 路径。大型模型继续按原有规则无损拆分。
+
+本地预览：
+
+```bash
+npm run build:pages
+npx vite preview --outDir=dist-pages --base=/web-racer/
+```
+
+打开预览服务下的 `/web-racer/` 路径。根域名托管仍使用 `npm run build`；未来为 GitHub Pages 绑定自定义域名时，应相应将 Pages 构建的 base 改为 `/`。
+
 ## 发布到腾讯云 EdgeOne
 
 ```bash

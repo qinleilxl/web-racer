@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-edgeone/
+dist-pages/
 *.local
 .DS_Store
 *.tsbuildinfo

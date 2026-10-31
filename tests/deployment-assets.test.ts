@@ -2,7 +2,27 @@ import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ASSET_LIMIT, externalizeGlb } from "../scripts/cloudflare-assets";
-import { modelAssetUrl } from "../src/game/ModelAsset";
+import { modelAssetUrl, publicAssetUrl } from "../src/game/ModelAsset";
+
+test("public game assets resolve under both root hosting and repository Pages", () => {
+  for (const asset of [
+    "/assets/Sparrow_One_E_Final.gltf",
+    "/assets/Hifi_Animated.glb",
+    "/assets/Coastal_Circuit.glb",
+    "/assets/Road_Collision.glb",
+    "/assets/track_route.json",
+    "/assets/showroom/sparrow.glb",
+    "/assets/showroom/coast.glb",
+  ]) {
+    assert.equal(publicAssetUrl(asset, "/"), asset);
+    assert.equal(publicAssetUrl(asset, "/web-racer/"), `/web-racer${asset}`);
+    assert.equal(publicAssetUrl(asset, "/web-racer"), `/web-racer${asset}`);
+  }
+  assert.equal(publicAssetUrl("assets/test.glb?v=2", "/web-racer/"), "/web-racer/assets/test.glb?v=2");
+  for (const url of ["https://cdn.example/car.glb", "//cdn.example/car.glb", "data:application/json,{}", "blob:https://example.com/model"]) {
+    assert.equal(publicAssetUrl(url, "/web-racer/"), url);
+  }
+});
 
 test("large production model retains every buffer view, animation and rig byte for byte", async () => {
   const bytes = await readFile("public/assets/Sparrow_One_E_Final.glb");

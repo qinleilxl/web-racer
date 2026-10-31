@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { modelAssetUrl } from "./ModelAsset";
+import { modelAssetUrl, publicAssetUrl } from "./ModelAsset";
 import { Physics, type PhysicsEnvironment } from "./Physics";
 import { createTestGround, TEST_GROUND_SIZE } from "./TestGround";
 import { createCoastalCircuit } from "./CoastalCircuit";
@@ -324,9 +324,9 @@ export class Game {
         training
           ? Promise.resolve(createTestGround())
           : Promise.all([
-              loader.loadAsync("/assets/Coastal_Circuit.glb"),
-              loader.loadAsync("/assets/Road_Collision.glb"),
-              fetch("/assets/track_route.json").then((r) => {
+              loader.loadAsync(publicAssetUrl("/assets/Coastal_Circuit.glb")),
+              loader.loadAsync(publicAssetUrl("/assets/Road_Collision.glb")),
+              fetch(publicAssetUrl("/assets/track_route.json")).then((r) => {
                 if (!r.ok) throw new Error(t("路线数据未能载入"));
                 return r.json() as Promise<RouteData>;
               }),

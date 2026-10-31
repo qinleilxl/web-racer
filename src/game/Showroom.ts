@@ -9,6 +9,7 @@ import { ConvertibleRoof } from "./ConvertibleRoof";
 import { prepareVehicleGlass } from "./VehicleGlass";
 import { disposeObjectResources } from "./GraphicsResources";
 import type { Settings, Snapshot } from "./types";
+import { publicAssetUrl } from "./ModelAsset";
 
 /** A real 3D vehicle stage. It has no track data, Jolt, audio or race simulation. */
 export class Showroom {
@@ -54,8 +55,8 @@ export class Showroom {
   async load(id: VehicleId) {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     const [asset, coast] = await Promise.all([
-      loader.loadAsync(`/assets/showroom/${id}.glb`),
-      loader.loadAsync("/assets/showroom/coast.glb"),
+      loader.loadAsync(publicAssetUrl(`/assets/showroom/${id}.glb`)),
+      loader.loadAsync(publicAssetUrl("/assets/showroom/coast.glb")),
     ]);
     if (this.disposed) { disposeObjectResources(asset.scene); disposeObjectResources(coast.scene); return; }
     coast.scene.traverse((node) => {
