@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { MathUtils, Object3D, Quaternion, Vector3 } from "three";
 import type { Physics } from "./Physics";
 import { RigLinks } from "./RigLinks";
@@ -50,7 +51,7 @@ export class CarRig {
     });
     const node = (name: string) => {
       const result = model.getObjectByName(name);
-      if (!result) throw new Error(`车辆模型缺少节点：${name}`);
+      if (!result) throw new Error(t("车辆模型缺少节点：{0}", { 0: name }));
       return result;
     };
     const names = ["FL", "FR", "RL", "RR"];
@@ -105,7 +106,7 @@ export class CarRig {
       if (
         !(typeof length === "number" && Number.isFinite(length) && length > 0)
       )
-        throw new Error(`车辆连杆缺少有效长度：${o.name}`);
+        throw new Error(t("车辆连杆缺少有效长度：{0}", { 0: o.name }));
       this.mechanical.push({
         node: o,
         target: node(o.userData.mechanical_target),

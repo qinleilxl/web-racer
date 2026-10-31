@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { vehicleModelRoot } from "./Vehicles";
 import {
   Box3,
@@ -174,7 +175,7 @@ export class VehicleFeedback {
           !(trim instanceof Mesh) ||
           !(trim.material instanceof MeshStandardMaterial)
         )
-          throw new Error(`车辆尾灯缺少外框：${vehicle.id}/${name}`);
+          throw new Error(t("车辆尾灯缺少外框：{0}/{1}", { 0: vehicle.id, 1: name }));
         trim.userData.runtime_feedback = true;
         const material = trim.material.clone();
         material.emissive.setHex(0xff1608);
@@ -190,7 +191,7 @@ export class VehicleFeedback {
           !(mesh instanceof Mesh) ||
           !(mesh.material instanceof MeshStandardMaterial)
         )
-          throw new Error(`车辆刹车灯缺少灯罩：${vehicle.id}/${name}`);
+          throw new Error(t("车辆刹车灯缺少灯罩：{0}/{1}", { 0: vehicle.id, 1: name }));
         if (fixture.minimumLensHeight) {
           mesh.geometry.computeBoundingBox();
           const box = mesh.geometry.boundingBox!;

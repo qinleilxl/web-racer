@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { VEHICLES, type VehicleId } from "./Vehicles";
 
 /** Versioned, bounded setup shared by the simulation and the garage debugger. */
@@ -479,13 +480,13 @@ export function parseTuning(json: string): PhysicsTuning {
     typeof data.tuning !== "object" ||
     Array.isArray(data.tuning)
   )
-    throw new Error("请选择版本 1 的云岬调校 JSON");
+    throw new Error(t("请选择版本 1 的云岬调校 JSON"));
   for (const key of Object.keys(TUNING_SCHEMA))
     if (
       typeof data.tuning[key] !== "number" ||
       !Number.isFinite(data.tuning[key])
     )
-      throw new Error(`参数 ${key} 缺失或不是有效数字`);
+      throw new Error(t("参数 {0} 缺失或不是有效数字", { 0: key }));
   return sanitizeTuning(data.tuning);
 }
 export function loadTuning(id: VehicleId = "sparrow"): PhysicsTuning {

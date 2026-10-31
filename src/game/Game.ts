@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { modelAssetUrl } from "./ModelAsset";
@@ -326,7 +327,7 @@ export class Game {
               loader.loadAsync("/assets/Coastal_Circuit.glb"),
               loader.loadAsync("/assets/Road_Collision.glb"),
               fetch("/assets/track_route.json").then((r) => {
-                if (!r.ok) throw new Error("路线数据未能载入");
+                if (!r.ok) throw new Error(t("路线数据未能载入"));
                 return r.json() as Promise<RouteData>;
               }),
             ]).then(([land, collision, route]) =>
@@ -403,10 +404,10 @@ export class Game {
     this.emit();
   }
   async applyTuning(value: PhysicsTuning) {
-    if (this.mapId !== "test") throw new Error("请在试车场中应用调校");
-    if (this.state.tuningBusy) throw new Error("参数正在应用，请稍候");
+    if (this.mapId !== "test") throw new Error(t("请在试车场中应用调校"));
+    if (this.state.tuningBusy) throw new Error(t("参数正在应用，请稍候"));
     if (!this.track || !this.collision || !this.physics)
-      throw new Error("车辆还未准备完成");
+      throw new Error(t("车辆还未准备完成"));
     this.startGeneration++;
     const next = sanitizeTuning(value);
     const inSession = ["racing", "countdown", "paused", "finished"].includes(
@@ -472,9 +473,9 @@ export class Game {
       previous.dispose();
       try {
         saveTuning(next, this.vehicle.id);
-        this.notice("调校已应用 · 车辆已重置");
+        this.notice(t("调校已应用 · 车辆已重置"));
       } catch {
-        this.notice("调校已应用，本次浏览器无法保存");
+        this.notice(t("调校已应用，本次浏览器无法保存"));
       }
     } finally {
       replacement?.dispose();
@@ -696,11 +697,11 @@ export class Game {
       } catch {
         /* Embedded browsers may restrict history. */
       }
-      this.notice(`已换乘${this.vehicle.name}`);
+      this.notice(t("已换乘{0}", { 0: t(this.vehicle.name) }));
     } catch (error) {
       if (current()) {
-        console.error("车辆切换失败", error);
-        this.state.vehicleSwitchError = `未能切换车辆，仍使用${this.vehicle.name}，请重试。`;
+        console.error(t("车辆切换失败"), error);
+        this.state.vehicleSwitchError = t("未能切换车辆，仍使用{0}，请重试。", { 0: t(this.vehicle.name) });
       }
     } finally {
       prepared?.physics.dispose();
@@ -847,7 +848,7 @@ export class Game {
     this.state.wrongWay = false;
     this.cameraReady = false;
     this.notice(
-      this.mapId === "test" ? "回到试车场起点" : "回到安全路段 · +3 秒",
+      this.mapId === "test" ? t("回到试车场起点") : t("回到安全路段 · +3 秒"),
     );
     this.emit();
   }
@@ -859,8 +860,8 @@ export class Game {
     this.headlights = !this.headlights;
     this.notice(
       this.vehicle.id === "formula"
-        ? "Formula 后雨灯随制动反馈"
-        : `前灯${this.headlights ? "已开启" : "已关闭"}`,
+        ? t("Formula 后雨灯随制动反馈")
+        : t("前灯{0}", { 0: this.headlights ? t("已开启") : t("已关闭") }),
     );
     this.emit();
   }
@@ -1017,7 +1018,7 @@ export class Game {
       if (crossed) {
         this.world!.setGate(race.passed);
         this.audio.beep(880, 0.13);
-        this.notice(race.finished ? "冲线！" : `检查点 ${race.passed} / 8`);
+        this.notice(race.finished ? t("冲线！") : t("检查点 {0} / 8", { 0: race.passed }));
       }
       const completed = race.passed / 8;
       const segment =
@@ -1056,7 +1057,7 @@ export class Game {
               String(race.elapsed),
             );
           } catch {
-            this.notice("浏览器未允许保存成绩");
+            this.notice(t("浏览器未允许保存成绩"));
           }
         }
         this.input.clear();
@@ -1231,7 +1232,7 @@ export class Game {
       if (this.countdownTime <= 0) {
         this.state.phase = "racing";
         this.audio.beep(880, 0.3);
-        this.notice("出发，追着风！");
+        this.notice(t("出发，追着风！"));
       }
     }
     if (["racing", "countdown", "finished"].includes(phase)) {

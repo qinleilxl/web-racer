@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { vehicleModelRoot } from "./Vehicles";
 import {
   Mesh,
@@ -48,7 +49,7 @@ export function batchVehicleBody(model: Object3D, clips: AnimationClip[]) {
     });
     const merged = mergeGeometries(geometries, false);
     geometries.forEach((g) => g.dispose());
-    if (!merged) throw new Error("车辆车身部件合并失败");
+    if (!merged) throw new Error(t("车辆车身部件合并失败"));
     merged.computeBoundingBox();
     merged.computeBoundingSphere();
     const body = new Mesh(merged, meshes[0].material);

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState } from "react";
 import type { Game } from "../game/Game";
 import type { Settings } from "../game/types";
@@ -105,7 +106,7 @@ export function TouchControls({
       type="button"
       className={`touch-key touch-${action}${held.has(action) ? " held" : ""}`}
       data-control={action}
-      aria-label={labels[action]}
+      aria-label={t(labels[action])}
       aria-pressed={held.has(action)}
       onContextMenu={(e) => e.preventDefault()}
       onPointerDown={(e) => {
@@ -127,13 +128,13 @@ export function TouchControls({
   return (
     <div
       className={`touch-controls${settings.autoThrottle ? " automatic" : ""}`}
-      aria-label="触屏驾驶控制"
+      aria-label={t("触屏驾驶控制")}
     >
       <div className="touch-direction">
         <div className="touch-tools">
           <button
             type="button"
-            aria-label="切换驾驶视角"
+            aria-label={t("切换驾驶视角")}
             onClick={() => {
               game?.cycleCamera();
               (document.activeElement as HTMLElement)?.blur();
@@ -144,7 +145,7 @@ export function TouchControls({
           <button
             type="button"
             aria-label={
-              training ? "回到试车起点" : "返回安全检查点，计时加三秒"
+              training ? t("回到试车起点") : t("返回安全检查点，计时加三秒")
             }
             onClick={() => {
               game?.input.clearTouch();
@@ -156,23 +157,22 @@ export function TouchControls({
             <ControlIcon action="reset" />
           </button>
         </div>
-        <div className="touch-steering" role="group" aria-label="方向控制">
-          {control("left", "左")}
-          {control("right", "右")}
+        <div className="touch-steering" role="group" aria-label={t("方向控制")}>
+          {control("left", t("左"))}
+          {control("right", t("右"))}
         </div>
       </div>
       <div className="touch-pedal-group">
         {settings.autoThrottle && (
           <div className="auto-throttle-badge">
             <i />
-            自动油门
-          </div>
+            {t("自动油门")}</div>
         )}
-        <div className="touch-pedals" role="group" aria-label="踏板控制">
-          {control("handbrake", "手刹")}
-          {control("boost", "加速")}
-          {control("brake", "刹车")}
-          {!settings.autoThrottle && control("throttle", "油门")}
+        <div className="touch-pedals" role="group" aria-label={t("踏板控制")}>
+          {control("handbrake", t("手刹"))}
+          {control("boost", t("加速"))}
+          {control("brake", t("刹车"))}
+          {!settings.autoThrottle && control("throttle", t("油门"))}
         </div>
       </div>
     </div>

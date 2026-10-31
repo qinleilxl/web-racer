@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { vehicleModelRoot } from "./Vehicles";
 import {
   AdditiveBlending,
@@ -141,7 +142,7 @@ export class ExhaustFlames {
     for (const [i, outlet] of vehicle.exhausts.entries()) {
       const mouth = model.getObjectByName(outlet.node);
       if (!mouth)
-        throw new Error(`车辆排气口缺少节点：${vehicle.id}/${outlet.node}`);
+        throw new Error(t("车辆排气口缺少节点：{0}/{1}", { 0: vehicle.id, 1: outlet.node }));
       const bounds = new Box3().setFromObject(mouth).applyMatrix4(inverse);
       const direction = new Vector3(1, 0, 0);
       if (outlet.direction) direction.set(...outlet.direction).normalize();

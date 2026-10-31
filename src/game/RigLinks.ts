@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { Object3D, Vector3 } from "three";
 import type { VehicleId } from "./Vehicles";
 
@@ -24,7 +25,7 @@ export class RigLinks {
   ) {
     const node = (name: string) => {
       const n = model.getObjectByName(name);
-      if (!n) throw new Error(`车辆连杆缺少节点：${name}`);
+      if (!n) throw new Error(t("车辆连杆缺少节点：{0}", { 0: name }));
       return n;
     };
     const add = (name: string, end: string, start?: string, fraction = 1) => {

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import type { Snapshot } from "../game/types";
 import {
@@ -45,7 +46,7 @@ function Parameter({
   return (
     <div className="debug-parameter">
       <div className="debug-parameter-heading">
-        <label htmlFor={`tuning-${name}`}>{field.label}</label>
+        <label htmlFor={`tuning-${name}`}>{t(field.label)}</label>
         <div className="debug-number-wrap">
           <input
             id={`tuning-${name}`}
@@ -75,7 +76,7 @@ function Parameter({
       </div>
       <input
         className="debug-range"
-        aria-label={`${field.label}滑杆`}
+        aria-label={t("{0}滑杆", { 0: t(field.label) })}
         type="range"
         min={field.min}
         max={field.max}
@@ -86,7 +87,7 @@ function Parameter({
       />
       <div className="debug-range-scale" aria-hidden="true">
         <span>{field.min}</span>
-        <span>默认 {field.value}</span>
+        <span>{t("默认")} {field.value}</span>
         <span>{field.max}</span>
       </div>
     </div>
@@ -137,10 +138,10 @@ export function DebugPanel({
     setMessage("");
     try {
       await apply(sanitizeTuning(draft));
-      setMessage("参数已应用。车辆已重置，可继续试车。");
+      setMessage(t("参数已应用。车辆已重置，可继续试车。"));
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "参数未能应用，请重试。",
+        cause instanceof Error ? cause.message : t("参数未能应用，请重试。"),
       );
     } finally {
       setLocalBusy(false);
@@ -155,7 +156,7 @@ export function DebugPanel({
     link.download = `cloudcape-${state.vehicleId}-setup.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage("已导出当前草稿。");
+    setMessage(t("已导出当前草稿。"));
     setError("");
   };
   const importFile = async (file?: File) => {
@@ -163,12 +164,12 @@ export function DebugPanel({
     setError("");
     setMessage("");
     try {
-      if (file.size > 64 * 1024) throw new Error("调校文件应小于 64 KB。");
+      if (file.size > 64 * 1024) throw new Error(t("调校文件应小于 64 KB。"));
       setDraft(parseTuning(await file.text()));
-      setMessage("已导入草稿，点击应用后生效。");
+      setMessage(t("已导入草稿，点击应用后生效。"));
       setTab("setup");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "无法读取调校 JSON。");
+      setError(cause instanceof Error ? cause.message : t("无法读取调校 JSON。"));
     } finally {
       if (fileInput.current) fileInput.current.value = "";
     }
@@ -179,7 +180,7 @@ export function DebugPanel({
   return (
     <aside
       className="debug-panel"
-      aria-label="车辆与赛道调试"
+      aria-label={t("车辆与赛道调试")}
       onWheel={(event) => event.stopPropagation()}
     >
       <header className="debug-header">
@@ -187,12 +188,12 @@ export function DebugPanel({
           <span className="debug-eyebrow">
             {VEHICLES[state.vehicleId].english} · ENGINEERING
           </span>
-          <h2>试车工作台</h2>
+          <h2>{t("试车工作台")}</h2>
         </div>
         <button
           className="debug-close"
-          aria-label="关闭调试菜单"
-          title="关闭 · F2 / Esc"
+          aria-label={t("关闭调试菜单")}
+          title={t("关闭 · F2 / Esc")}
           onClick={close}
         >
           ×
@@ -206,21 +207,21 @@ export function DebugPanel({
         >
           <i />{" "}
           {state.phase === "paused"
-            ? "已暂停"
+            ? t("已暂停")
             : state.phase === "racing"
-              ? "试车中"
+              ? t("试车中")
               : state.phase === "countdown"
-                ? "准备起步"
-                : "车库"}
+                ? t("准备起步")
+                : t("车库")}
         </span>
-        <span>{state.customSetup ? "自定义调校" : "标准调校"}</span>
+        <span>{state.customSetup ? t("自定义调校") : t("标准调校")}</span>
         {driving && (
           <button disabled={busy} onClick={pause}>
-            {state.phase === "paused" ? "继续试车" : "暂停试车"}
+            {state.phase === "paused" ? t("继续试车") : t("暂停试车")}
           </button>
         )}
       </div>
-      <div className="debug-tabs" role="tablist" aria-label="调试视图">
+      <div className="debug-tabs" role="tablist" aria-label={t("调试视图")}>
         <button
           id="debug-tab-setup"
           role="tab"
@@ -231,7 +232,7 @@ export function DebugPanel({
             event.currentTarget.blur();
           }}
         >
-          调校参数 {changed.length > 0 && <b>{changed.length}</b>}
+          {t("调校参数")}{changed.length > 0 && <b>{changed.length}</b>}
         </button>
         <button
           id="debug-tab-telemetry"
@@ -243,7 +244,7 @@ export function DebugPanel({
             event.currentTarget.blur();
           }}
         >
-          实时遥测{" "}
+          {t("实时遥测")}{" "}
           <span className="debug-tab-fps">{Math.round(state.fps)} FPS</span>
         </button>
       </div>
@@ -255,43 +256,42 @@ export function DebugPanel({
             aria-labelledby="debug-tab-setup"
           >
             <div className="debug-preset-row">
-              <label htmlFor="debug-preset">调校预设</label>
+              <label htmlFor="debug-preset">{t("调校预设")}</label>
               <select
                 id="debug-preset"
                 value={preset}
                 disabled={busy}
                 onChange={(event) => {
                   setDraft(tuningPreset(event.target.value, state.vehicleId));
-                  setMessage("预设已载入草稿，点击应用后生效。");
+                  setMessage(t("预设已载入草稿，点击应用后生效。"));
                   setError("");
                 }}
               >
                 {preset === "custom" && (
                   <option value="custom" disabled>
-                    自定义调校
-                  </option>
+                    {t("自定义调校")}</option>
                 )}
                 {Object.entries(TUNING_PRESETS).map(([key, value]) => (
                   <option key={key} value={key}>
                     {key === "balanced"
-                      ? `${VEHICLES[state.vehicleId].name} · 标准`
-                      : value.label}
+                      ? t("{0} · 标准", { 0: t(VEHICLES[state.vehicleId].name) })
+                      : t(value.label)}
                   </option>
                 ))}
               </select>
             </div>
-            <nav className="debug-groups" aria-label="参数分组">
+            <nav className="debug-groups" aria-label={t("参数分组")}>
               {TUNING_GROUPS.map((value) => (
                 <button
                   key={value}
                   aria-pressed={group === value}
                   onClick={() => setGroup(value)}
                 >
-                  {value}
+                  {t(value)}
                 </button>
               ))}
             </nav>
-            <div className="debug-parameters" aria-label={group}>
+            <div className="debug-parameters" aria-label={t(group)}>
               {tuningKeys
                 .filter((name) => TUNING_SCHEMA[name].group === group)
                 .map((name) => (
@@ -309,27 +309,24 @@ export function DebugPanel({
                 disabled={busy}
                 onClick={() => {
                   setDraft(vehicleDefaults(state.vehicleId));
-                  setMessage("默认参数已载入草稿，点击应用后生效。");
+                  setMessage(t("默认参数已载入草稿，点击应用后生效。"));
                   setError("");
                 }}
               >
-                恢复默认
-              </button>
+                {t("恢复默认")}</button>
               <button
                 disabled={busy}
                 onClick={() => fileInput.current?.click()}
               >
-                导入 JSON
-              </button>
+                {t("导入 JSON")}</button>
               <button disabled={busy} onClick={exportDraft}>
-                导出草稿
-              </button>
+                {t("导出草稿")}</button>
               <input
                 ref={fileInput}
                 className="debug-file-input"
                 type="file"
                 accept=".json,application/json"
-                aria-label="导入调校 JSON 文件"
+                aria-label={t("导入调校 JSON 文件")}
                 onChange={(event) => void importFile(event.target.files?.[0])}
               />
             </div>
@@ -342,29 +339,29 @@ export function DebugPanel({
           >
             <div className="debug-live-readouts">
               <div>
-                <span>车速</span>
+                <span>{t("车速")}</span>
                 <strong>
                   {state.speed.toFixed(0)}
                   <small>km/h</small>
                 </strong>
-                <small>{(state.speed / 3.6).toFixed(2)} m/s · 物理速度</small>
+                <small>{(state.speed / 3.6).toFixed(2)} {t("m/s · 物理速度")}</small>
               </div>
               <div>
-                <span>发动机</span>
+                <span>{t("发动机")}</span>
                 <strong>
                   {Math.round(state.rpm)}
                   <small>rpm</small>
                 </strong>
               </div>
               <div>
-                <span>车身滑角</span>
+                <span>{t("车身滑角")}</span>
                 <strong>
                   {(telemetry?.slipAngle ?? 0).toFixed(1)}
                   <small>°</small>
                 </strong>
               </div>
               <div>
-                <span>偏航角速度</span>
+                <span>{t("偏航角速度")}</span>
                 <strong>
                   {(telemetry?.yawRate ?? 0).toFixed(1)}
                   <small>°/s</small>
@@ -373,21 +370,21 @@ export function DebugPanel({
             </div>
             <div className="debug-g-readouts">
               <span>
-                纵向 <b>{(telemetry?.longitudinalG ?? 0).toFixed(2)} G</b>
+                {t("纵向")}<b>{(telemetry?.longitudinalG ?? 0).toFixed(2)} G</b>
               </span>
               <span>
-                横向 <b>{(telemetry?.lateralG ?? 0).toFixed(2)} G</b>
+                {t("横向")}<b>{(telemetry?.lateralG ?? 0).toFixed(2)} G</b>
               </span>
               <span>
-                挡位{" "}
+                {t("挡位")}{" "}
                 <b>
                   {state.gear < 0 ? "R" : state.gear === 0 ? "N" : state.gear}
                 </b>
               </span>
             </div>
             <div className="debug-section-heading">
-              <h3>四轮接地</h3>
-              <span>轮胎抓地使用率</span>
+              <h3>{t("四轮接地")}</h3>
+              <span>{t("轮胎抓地使用率")}</span>
             </div>
             <div className="debug-wheels">
               {wheelNames.map((name, index) => {
@@ -399,8 +396,8 @@ export function DebugPanel({
                     className={`debug-wheel ${wheel?.grounded ? "grounded" : "airborne"}`}
                   >
                     <div className="debug-wheel-title">
-                      <b>{name}</b>
-                      <span>{wheel?.grounded ? "接地" : "离地"}</span>
+                      <b>{t(name)}</b>
+                      <span>{wheel?.grounded ? t("接地") : t("离地")}</span>
                     </div>
                     <strong>
                       {Math.round(wheel?.load ?? 0)}
@@ -409,7 +406,7 @@ export function DebugPanel({
                     <div
                       className="debug-usage"
                       role="meter"
-                      aria-label={`${name}抓地使用率`}
+                      aria-label={t("{0}抓地使用率", { 0: t(name) })}
                       aria-valuemin={0}
                       aria-valuemax={200}
                       aria-valuenow={Math.round(usage * 100)}
@@ -417,19 +414,19 @@ export function DebugPanel({
                       <span style={{ width: `${Math.min(1, usage) * 100}%` }} />
                     </div>
                     <div className="debug-wheel-pair">
-                      <span>抓地使用</span>
+                      <span>{t("抓地使用")}</span>
                       <b>{Math.round(usage * 100)}%</b>
                     </div>
                     <div className="debug-wheel-pair">
-                      <span>纵向滑移</span>
+                      <span>{t("纵向滑移")}</span>
                       <b>{percent(wheel?.slipRatio ?? 0)}%</b>
                     </div>
                     <div className="debug-wheel-pair">
-                      <span>侧偏角</span>
+                      <span>{t("侧偏角")}</span>
                       <b>{(wheel?.slipAngle ?? 0).toFixed(1)}°</b>
                     </div>
                     <div className="debug-wheel-pair">
-                      <span>悬挂长度</span>
+                      <span>{t("悬挂长度")}</span>
                       <b>{Math.round((wheel?.suspension ?? 0) * 1000)} mm</b>
                     </div>
                   </div>
@@ -437,39 +434,37 @@ export function DebugPanel({
               })}
             </div>
             <div className="debug-section-heading">
-              <h3>辅助与接触</h3>
-              <span>当前作用量</span>
+              <h3>{t("辅助与接触")}</h3>
+              <span>{t("当前作用量")}</span>
             </div>
             <dl className="debug-detail-list">
               <div>
-                <dt>牵引力控制 TCS</dt>
+                <dt>{t("牵引力控制 TCS")}</dt>
                 <dd>{percent(telemetry?.tcs ?? 0)}%</dd>
               </div>
               <div>
-                <dt>防抱死辅助 ABS</dt>
+                <dt>{t("防抱死辅助 ABS")}</dt>
                 <dd>{percent(telemetry?.abs ?? 0)}%</dd>
               </div>
               <div>
-                <dt>后轴抓地恢复</dt>
+                <dt>{t("后轴抓地恢复")}</dt>
                 <dd>{percent(telemetry?.rearGrip ?? 1)}%</dd>
               </div>
               <div>
-                <dt>护墙接触</dt>
-                <dd>{telemetry?.wallContact ? "接触中" : "无接触"}</dd>
+                <dt>{t("护墙接触")}</dt>
+                <dd>{telemetry?.wallContact ? t("接触中") : t("无接触")}</dd>
               </div>
               <div>
-                <dt>撞击接近速度</dt>
+                <dt>{t("撞击接近速度")}</dt>
                 <dd>{(telemetry?.impactSpeed ?? 0).toFixed(1)} m/s</dd>
               </div>
               <div>
-                <dt>持续擦墙</dt>
+                <dt>{t("持续擦墙")}</dt>
                 <dd>{percent(state.wallScrape)}%</dd>
               </div>
             </dl>
             <p className="debug-explainer">
-              接近 100%
-              表示轮胎正在用尽当前抓地预算。观察前后轴的负载、滑移与车身滑角，再调整参数。
-            </p>
+              {t("接近 100% 表示轮胎正在用尽当前抓地预算。观察前后轴的负载、滑移与车身滑角，再调整参数。")}</p>
           </section>
         )}
       </div>
@@ -486,21 +481,20 @@ export function DebugPanel({
         )}
         <div className="debug-apply-status">
           <span className={changed.length ? "pending" : ""}>
-            {changed.length ? `${changed.length} 项修改尚未应用` : "参数已同步"}
+            {changed.length ? t("{0} 项修改尚未应用", { 0: changed.length }) : t("参数已同步")}
           </span>
-          <span>仅保存在本机</span>
+          <span>{t("仅保存在本机")}</span>
         </div>
         <button
           className="debug-apply"
           disabled={busy || !changed.length}
           onClick={() => void applyDraft()}
         >
-          {busy ? "正在重建车辆…" : "应用并重置车辆"}
+          {busy ? t("正在重建车辆…") : t("应用并重置车辆")}
           <span aria-hidden="true">↗</span>
         </button>
         <p className="debug-explainer">
-          应用时暂停并将车辆重置到试车场起点。关闭面板后仍保持暂停。
-        </p>
+          {t("应用时暂停并将车辆重置到试车场起点。关闭面板后仍保持暂停。")}</p>
       </footer>
     </aside>
   );

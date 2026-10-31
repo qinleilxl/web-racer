@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import {
   AnimationMixer,
   LoopOnce,
@@ -20,7 +21,7 @@ export class ConvertibleRoof {
   ) {
     const clip = clips.find((c) => c.name === "Roof_Open");
     if (!clip || !(clip.duration > 0))
-      throw new Error("敞篷模型缺少有效的 Roof_Open 动画");
+      throw new Error(t("敞篷模型缺少有效的 Roof_Open 动画"));
     this.duration = clip.duration;
     this.mixer = new AnimationMixer(model);
     this.action = this.mixer.clipAction(clip);

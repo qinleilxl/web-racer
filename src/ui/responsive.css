@@ -92,6 +92,32 @@
 .segmented { flex-shrink: 1; }
 .segmented button { flex: 1; }
 
+/* English copy needs room to wrap while preserving the compact Chinese layout. */
+html:lang(en) .game-title {
+  max-width: 9ch;
+  font-size: clamp(38px, 5.5vw, 76px);
+  line-height: .98;
+  letter-spacing: -.035em;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+html:lang(en) .settings-tabs { gap: clamp(10px, 3vw, 24px); }
+html:lang(en) .setting-row > label,
+html:lang(en) .setting-row > span { flex-shrink: 1; }
+html:lang(en) .segmented { flex-shrink: 0; }
+html:lang(en) .setting-row { gap: 12px; }
+html:lang(en) .timing { min-width: 0; }
+html:lang(en) .tagline { letter-spacing: .06em; }
+
+@media (max-width: 600px) {
+  html:lang(en) .settings-tabs { gap: 8px; }
+  html:lang(en) .settings-tabs button { font-size: 10px; white-space: normal; }
+  html:lang(en) .segmented button { min-width: 42px; padding-inline: 8px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  html:lang(en) .game-title { font-size: clamp(30px, 4.8vw, 46px); }
+}
+
 /* Narrow or touch screens reserve two instrument rows above the driving stage. */
 @media (max-width: 1000px), (any-pointer: coarse) {
   .app { --edge-left: max(18px, calc(env(safe-area-inset-left) + 12px)); --edge-right: max(18px, calc(env(safe-area-inset-right) + 12px)); }

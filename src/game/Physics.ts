@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import initJolt from "jolt-physics/wasm";
 import type Jolt from "jolt-physics";
 import { Mesh, Object3D, Quaternion, Vector3 } from "three";
@@ -313,7 +314,7 @@ export class Physics {
     mesh.Sanitize();
     if (layer === 2) mesh.mActiveEdgeCosThresholdAngle = -1;
     const result = mesh.Create();
-    if (result.HasError()) throw new Error("赛道路面碰撞体创建失败");
+    if (result.HasError()) throw new Error(t("赛道路面碰撞体创建失败"));
     this.addBody(
       result.Get(),
       new Vector3(),
